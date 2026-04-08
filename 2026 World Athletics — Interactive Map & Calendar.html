@@ -1,0 +1,1084 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>2026 World Athletics — Interactive Map & Calendar</title>
+<meta name="description" content="Explore the 2026 World Athletics season with an interactive map and calendar of 294 Diamond League and Continental Tour meetings worldwide." />
+<meta property="og:title" content="2026 World Athletics — Interactive Map & Calendar" />
+<meta property="og:description" content="Browse every Diamond League and Continental Tour meeting on an interactive map and filterable calendar. Find dates, venues, and travel links for 294 athletics events worldwide." />
+<meta property="og:type" content="website" />
+<link rel="icon" href="favicon.ico" sizes="any" />
+<link rel="icon" href="favicon.svg" type="image/svg+xml" />
+<link rel="icon" href="favicon-32x32.png" type="image/png" sizes="32x32" />
+<link rel="icon" href="favicon-16x16.png" type="image/png" sizes="16x16" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.css" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.Default.css" />
+<style>
+  :root {
+    --bg: #0b1120;
+    --surface: #162033;
+    --surface-2: #1e293b;
+    --border: #2a3a52;
+    --border-hover: #475569;
+    --text: #e6ebf2;
+    --text-muted: #94a3b8;
+    --text-dim: #64748b;
+    --accent: #60a5fa;
+    --diamond: #22d3ee;
+    --gold: #fbbf24;
+    --silver: #e2e8f0;
+    --bronze: #b45309;
+    --challenger: #64748b;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased; }
+  body { display: flex; flex-direction: column; }
+
+  header {
+    padding: 12px 18px; background: var(--surface); border-bottom: 1px solid var(--border);
+    display: flex; justify-content: space-between; align-items: center; gap: 14px; flex-wrap: wrap;
+    position: sticky; top: 0; z-index: 1000;
+  }
+  .brand { flex-shrink: 0; }
+  .brand h1 { font-size: 1.02rem; font-weight: 650; letter-spacing: -0.01em; }
+  .brand p { font-size: 0.74rem; color: var(--text-muted); margin-top: 1px; }
+
+  .controls { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; justify-content: flex-end; }
+
+  .view-toggle { display: flex; background: var(--bg); border-radius: 7px; padding: 3px; border: 1px solid var(--border); }
+  .view-btn {
+    padding: 5px 12px; font-size: 0.76rem; background: transparent; color: var(--text-muted);
+    border: none; cursor: pointer; border-radius: 5px; font-weight: 600; transition: all 0.12s;
+    font-family: inherit; display: flex; align-items: center; gap: 5px;
+  }
+  .view-btn.active { background: var(--surface-2); color: var(--text); box-shadow: 0 1px 2px rgba(0,0,0,0.2); }
+  .view-btn:hover:not(.active) { color: var(--text); }
+
+  .filter-group { display: flex; gap: 6px; flex-wrap: wrap; }
+  .filter-select {
+    background: var(--bg); color: var(--text); border: 1px solid var(--border);
+    border-radius: 7px; padding: 6px 28px 6px 10px; font-size: 0.76rem; cursor: pointer;
+    font-family: inherit; transition: border-color 0.12s;
+    appearance: none; -webkit-appearance: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+    background-repeat: no-repeat; background-position: right 8px center;
+  }
+  .filter-select:hover { border-color: var(--border-hover); }
+  .filter-select:focus { outline: none; border-color: var(--accent); }
+
+  .legend { display: flex; gap: 4px; flex-wrap: wrap; }
+  .legend-item {
+    display: flex; align-items: center; gap: 6px; font-size: 0.72rem; cursor: pointer;
+    user-select: none; padding: 5px 10px; border-radius: 20px; transition: all 0.12s;
+    background: var(--bg); border: 1px solid var(--border); font-weight: 500;
+  }
+  .legend-item:hover { border-color: var(--border-hover); }
+  .legend-item.disabled { opacity: 0.35; }
+  .legend-item .count { font-size: 0.66rem; color: var(--text-dim); margin-left: 2px; font-variant-numeric: tabular-nums; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .dot.diamond { background: var(--diamond); box-shadow: 0 0 6px rgba(34, 211, 238, 0.55); }
+  .dot.gold { background: var(--gold); }
+  .dot.silver { background: var(--silver); }
+  .dot.bronze { background: var(--bronze); }
+  .dot.challenger { background: var(--challenger); }
+
+  /* Month bar */
+  .month-bar {
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    padding: 0 18px; overflow-x: auto; display: flex; gap: 2px;
+    scrollbar-width: none; flex-shrink: 0;
+  }
+  .month-bar::-webkit-scrollbar { display: none; }
+  .month-chip {
+    padding: 7px 12px; font-size: 0.74rem; font-weight: 600; white-space: nowrap;
+    background: transparent; border: none; color: var(--text-muted); cursor: pointer;
+    font-family: inherit; border-bottom: 2px solid transparent; transition: all 0.12s;
+    position: relative; top: 1px;
+  }
+  .month-chip:hover { color: var(--text); }
+  .month-chip.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .month-chip.empty { opacity: 0.3; pointer-events: none; }
+  .month-chip .chip-count { font-size: 0.62rem; color: var(--text-dim); margin-left: 4px; font-variant-numeric: tabular-nums; }
+  .month-chip.active .chip-count { color: var(--accent); opacity: 0.7; }
+
+  .view-container { flex: 1; min-height: 0; width: 100%; position: relative; }
+  #map { height: 100%; width: 100%; background: var(--surface-2); }
+  #calendar { height: 100%; width: 100%; overflow-y: auto; padding: 24px 20px 40px; background: var(--bg); display: none; scroll-behavior: smooth; }
+  .view-container.calendar-view #map { display: none; }
+  .view-container.calendar-view #calendar { display: block; }
+
+  .calendar-inner { max-width: 880px; margin: 0 auto; }
+  .month-section { margin-bottom: 32px; }
+  .month-section.hidden { display: none; }
+  .month-header {
+    font-size: 0.82rem; font-weight: 700; color: var(--text);
+    padding: 0 0 10px; margin-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+    display: flex; justify-content: space-between; align-items: baseline;
+    text-transform: uppercase; letter-spacing: 0.08em;
+  }
+  .month-header .count-badge {
+    font-size: 0.68rem; color: var(--text-dim); font-weight: 500;
+    text-transform: none; letter-spacing: 0;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .meeting-card {
+    display: flex; align-items: stretch; background: var(--surface);
+    border-radius: 10px; margin-bottom: 6px; border: 1px solid var(--border);
+    overflow: hidden; transition: all 0.15s; text-decoration: none;
+  }
+  .meeting-card:hover { border-color: var(--border-hover); background: var(--surface-2); }
+  .meeting-card.hidden { display: none; }
+
+  .card-tier-bar { width: 4px; flex-shrink: 0; }
+  .card-tier-bar.diamond { background: var(--diamond); }
+  .card-tier-bar.gold { background: var(--gold); }
+  .card-tier-bar.silver { background: var(--silver); }
+  .card-tier-bar.bronze { background: var(--bronze); }
+  .card-tier-bar.challenger { background: var(--challenger); }
+
+  .card-date {
+    width: 72px; flex-shrink: 0; padding: 10px 8px; text-align: center;
+    background: var(--bg); display: flex; flex-direction: column; justify-content: center;
+    font-size: 0.72rem; color: var(--text-muted); font-weight: 600;
+    border-right: 1px solid var(--border); font-variant-numeric: tabular-nums;
+  }
+
+  .card-body { flex: 1; padding: 10px 14px; min-width: 0; }
+  .card-name {
+    font-weight: 600; font-size: 0.88rem; color: var(--text); margin-bottom: 2px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .card-venue { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 5px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card-footer { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+  .card-tier-badge {
+    display: inline-block; padding: 1px 7px; border-radius: 4px;
+    font-size: 0.6rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
+  }
+  .card-tier-badge.diamond { background: var(--diamond); color: #062a33; }
+  .card-tier-badge.gold { background: var(--gold); color: #3d1a02; }
+  .card-tier-badge.silver { background: var(--silver); color: #1e293b; }
+  .card-tier-badge.bronze { background: var(--bronze); color: #fff; }
+  .card-tier-badge.challenger { background: var(--challenger); color: #fff; }
+  .card-link { font-size: 0.68rem; color: var(--accent); }
+
+  .empty-state {
+    text-align: center; padding: 80px 20px; color: var(--text-dim);
+    display: none; max-width: 400px; margin: 0 auto;
+  }
+  .empty-state.active { display: block; }
+  .empty-state .icon { font-size: 2rem; opacity: 0.5; margin-bottom: 12px; }
+  .empty-state h3 { font-size: 1rem; color: var(--text-muted); margin-bottom: 6px; font-weight: 600; }
+  .empty-state p { font-size: 0.82rem; line-height: 1.5; }
+
+  /* Leaflet popup refinements */
+  .leaflet-popup-content-wrapper {
+    background: var(--surface); color: var(--text); border-radius: 10px;
+    box-shadow: 0 8px 28px rgba(0,0,0,0.5); border: 1px solid var(--border);
+  }
+  .leaflet-popup-content { margin: 13px 15px; font-size: 0.82rem; line-height: 1.45; min-width: 230px; }
+  .leaflet-popup-tip { background: var(--surface); border: 1px solid var(--border); }
+  .leaflet-popup-close-button { color: var(--text-muted) !important; font-size: 18px !important; padding: 6px 8px !important; }
+  .leaflet-popup-close-button:hover { color: var(--text) !important; }
+
+  .popup-title { font-weight: 650; font-size: 0.94rem; margin-bottom: 8px; color: var(--gold); padding-right: 18px; letter-spacing: -0.005em; }
+  .popup-title.diamond { color: var(--diamond); }
+  .popup-meta { font-size: 0.78rem; color: var(--text-muted); margin: 2px 0; display: flex; align-items: center; gap: 6px; }
+  .popup-meta .emoji { display: inline-block; width: 16px; font-size: 0.78rem; }
+  .popup-meta a { color: var(--accent); text-decoration: none; }
+  .popup-meta a:hover { text-decoration: underline; }
+
+  .popup-affiliate {
+    display: flex; gap: 6px; margin: 10px 0 4px; padding-top: 10px;
+    border-top: 1px solid var(--border); flex-wrap: wrap;
+  }
+  .popup-affiliate a {
+    font-size: 0.7rem; color: var(--text-muted); text-decoration: none;
+    padding: 3px 8px; border-radius: 5px; background: var(--bg);
+    transition: all 0.12s; border: 1px solid var(--border);
+  }
+  .popup-affiliate a:hover { background: var(--surface-2); color: var(--text); border-color: var(--border-hover); }
+
+  .popup-tier {
+    display: inline-block; padding: 2px 8px; border-radius: 4px;
+    font-size: 0.62rem; font-weight: 700; text-transform: uppercase;
+    margin-top: 10px; letter-spacing: 0.05em;
+  }
+  .popup-tier.diamond { background: var(--diamond); color: #062a33; }
+  .popup-tier.gold { background: var(--gold); color: #3d1a02; }
+  .popup-tier.silver { background: var(--silver); color: #1e293b; }
+  .popup-tier.bronze { background: var(--bronze); color: #fff; }
+  .popup-tier.challenger { background: var(--challenger); color: #fff; }
+
+  /* Cluster refinements */
+  .marker-cluster-small { background-color: rgba(251, 191, 36, 0.35); }
+  .marker-cluster-small div { background-color: rgba(251, 191, 36, 0.9); color: #3d1a02; font-weight: 700; }
+  .marker-cluster-medium { background-color: rgba(180, 83, 9, 0.35); }
+  .marker-cluster-medium div { background-color: rgba(180, 83, 9, 0.9); color: #fff; font-weight: 700; }
+  .marker-cluster-large { background-color: rgba(100, 116, 139, 0.4); }
+  .marker-cluster-large div { background-color: rgba(100, 116, 139, 0.95); color: #fff; font-weight: 700; }
+  .marker-cluster { transition: transform 0.15s; }
+  .marker-cluster:hover { transform: scale(1.08); }
+
+  /* Search & toggle controls */
+  .search-input {
+    background: var(--bg); color: var(--text); border: 1px solid var(--border);
+    border-radius: 7px; padding: 6px 10px; font-size: 0.76rem;
+    font-family: inherit; transition: border-color 0.12s; width: 160px;
+  }
+  .search-input::placeholder { color: var(--text-dim); }
+  .search-input:hover { border-color: var(--border-hover); }
+  .search-input:focus { outline: none; border-color: var(--accent); }
+
+  .toggle-btn {
+    padding: 5px 12px; font-size: 0.76rem; background: var(--bg); color: var(--text-muted);
+    border: 1px solid var(--border); cursor: pointer; border-radius: 7px; font-weight: 600;
+    transition: all 0.12s; font-family: inherit; white-space: nowrap;
+  }
+  .toggle-btn:hover { border-color: var(--border-hover); color: var(--text); }
+  .toggle-btn.active { background: var(--accent); color: #0b1120; border-color: var(--accent); }
+
+  /* ICS button in calendar card */
+  .card-ics-btn {
+    background: transparent; border: 1px solid var(--border); border-radius: 5px;
+    color: var(--text-muted); font-size: 0.65rem; padding: 1px 6px;
+    cursor: pointer; font-family: inherit; transition: all 0.12s; margin-left: auto;
+  }
+  .card-ics-btn:hover { border-color: var(--border-hover); color: var(--text); background: var(--surface-2); }
+
+  /* ICS button in map popup */
+  .popup-ics-btn {
+    font-size: 0.7rem; color: var(--text-muted); padding: 3px 8px; border-radius: 5px;
+    background: var(--bg); border: 1px solid var(--border); cursor: pointer;
+    font-family: inherit; transition: all 0.12s;
+  }
+  .popup-ics-btn:hover { background: var(--surface-2); color: var(--text); border-color: var(--border-hover); }
+
+  /* About section */
+  .about-section {
+    max-width: 880px; margin: 0 auto 28px; padding: 14px 18px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    font-size: 0.8rem; color: var(--text-muted); line-height: 1.6;
+  }
+  .about-section strong { color: var(--text); }
+
+  /* Scrollbar */
+  #calendar::-webkit-scrollbar { width: 10px; }
+  #calendar::-webkit-scrollbar-track { background: transparent; }
+  #calendar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; border: 2px solid var(--bg); }
+  #calendar::-webkit-scrollbar-thumb:hover { background: var(--border-hover); }
+
+  /* Responsive */
+  @media (max-width: 900px) {
+    header { padding: 10px 14px; gap: 8px; }
+    .brand h1 { font-size: 0.95rem; }
+    .brand p { font-size: 0.7rem; }
+    .view-btn { padding: 5px 10px; font-size: 0.72rem; }
+    .filter-select { font-size: 0.72rem; padding: 5px 24px 5px 9px; }
+    .legend-item { font-size: 0.68rem; padding: 4px 8px; }
+    .legend-item .count { font-size: 0.62rem; }
+  }
+  @media (max-width: 600px) {
+    .controls { width: 100%; justify-content: flex-start; }
+    .month-chip { padding: 7px 9px; font-size: 0.7rem; }
+    .card-date { width: 62px; padding: 10px 6px; font-size: 0.68rem; }
+    .card-name { font-size: 0.84rem; }
+    .card-venue { font-size: 0.72rem; }
+    #calendar { padding: 18px 14px 32px; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <h1>2026 World Athletics</h1>
+    <p>Diamond League & Continental Tour · <span id="count">294 meetings</span></p>
+  </div>
+  <div class="controls">
+    <div class="view-toggle">
+      <button class="view-btn active" data-view="map">🗺 Map</button>
+      <button class="view-btn" data-view="calendar">📅 Calendar</button>
+    </div>
+    <div class="filter-group">
+      <input class="search-input" id="searchInput" type="search" placeholder="Search meetings…" autocomplete="off" />
+      <select class="filter-select" id="continentFilter"><option value="">All continents</option></select>
+      <select class="filter-select" id="countryFilter"><option value="">All countries</option></select>
+      <button class="toggle-btn" id="upcomingBtn">Upcoming only</button>
+    </div>
+    <div class="legend" id="legend">
+      <div class="legend-item" data-tier="diamond"><span class="dot diamond"></span> Diamond <span class="count" id="c-diamond"></span></div>
+      <div class="legend-item" data-tier="gold"><span class="dot gold"></span> Gold <span class="count" id="c-gold"></span></div>
+      <div class="legend-item" data-tier="silver"><span class="dot silver"></span> Silver <span class="count" id="c-silver"></span></div>
+      <div class="legend-item" data-tier="bronze"><span class="dot bronze"></span> Bronze <span class="count" id="c-bronze"></span></div>
+      <div class="legend-item" data-tier="challenger"><span class="dot challenger"></span> Challenger <span class="count" id="c-challenger"></span></div>
+    </div>
+  </div>
+</header>
+<div class="month-bar" id="monthBar"></div>
+<div class="view-container" id="viewContainer">
+  <div id="map"></div>
+  <div id="calendar">
+    <div class="about-section">
+      The <strong>World Athletics Continental Tour</strong> is a global series of track and field meetings that sits directly below the elite Diamond League in prestige. Events are ranked into five tiers — <strong style="color:var(--diamond)">Diamond</strong> (highest, invitation-only) → <strong style="color:var(--gold)">Gold</strong> → <strong style="color:var(--silver)">Silver</strong> → <strong style="color:var(--bronze)">Bronze</strong> → <strong style="color:var(--challenger)">Challenger</strong> (lowest) — reflecting prize money, athlete quality, and organisational standards, so the tier tells you at a glance how competitive a meeting is likely to be.
+    </div>
+    <div class="calendar-inner" id="calendarInner"></div>
+    <div class="empty-state" id="emptyState">
+      <div class="icon">🔍</div>
+      <h3>No meetings match your filters</h3>
+      <p>Try removing a filter or selecting a different continent, country, or tier.</p>
+    </div>
+  </div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.min.js"></script>
+<script>
+const meetings = [
+{n:"Allan & Sylvia Potts Classic",d:"17 Jan",v:"Mitre10 Sports Park, Hastings",c:"NZL",t:"challenger",w:"https://www.google.com/search?q=Allan+%26+Sylvia+Potts+Classic+Hastings+2026+athletics",wt:"search",lat:-39.6395,lng:176.8434},
+{n:"Pak'n Save Cooks International Classic",d:"24 Jan",v:"Cooks Gardens, Whanganui",c:"NZL",t:"bronze",w:"https://www.google.com/search?q=Pak%27n+Save+Cooks+International+Classic+Whanganui+2026+athletics",wt:"search",lat:-39.9301,lng:175.0476},
+{n:"Sir Graeme Douglas International",d:"08 Feb",v:"Douglas Track & Field, Auckland",c:"NZL",t:"bronze",w:"https://www.google.com/search?q=Sir+Graeme+Douglas+International+Auckland+2026+athletics",wt:"search",lat:-36.8485,lng:174.7633},
+{n:"Perth Track Classic",d:"14 Feb",v:"WA Athletics Stadium, Perth",c:"AUS",t:"bronze",w:"https://www.google.com/search?q=Perth+Track+Classic+Perth+2026+athletics",wt:"search",lat:-31.9505,lng:115.8605},
+{n:"International Track Meet",d:"21 Feb",v:"Nga Puna Wai Sports Hub, Christchurch",c:"NZL",t:"bronze",w:"https://www.google.com/search?q=International+Track+Meet+Christchurch+2026+athletics",wt:"search",lat:-43.5321,lng:172.6362},
+{n:"Egypt Winter Cup",d:"23 Feb",v:"Suez Canal Authority Stadium, Ismailia",c:"EGY",t:"challenger",w:"https://www.google.com/search?q=Egypt+Winter+Cup+Ismailia+2026+athletics",wt:"search",lat:30.5877,lng:32.2653},
+{n:"Hobart Track Classic",d:"28 Feb",v:"Domain Athletic Centre, Hobart",c:"AUS",t:"bronze",w:"https://www.google.com/search?q=Hobart+Track+Classic+Hobart+2026+athletics",wt:"search",lat:-42.8821,lng:147.3272},
+{n:"MTN CHAMPS Athletics Classics",d:"04-07 Mar",v:"UJ Esuene Stadium, Calabar",c:"NGR",t:"challenger",w:"https://www.google.com/search?q=MTN+CHAMPS+Athletics+Classics+Calabar+2026+athletics",wt:"search",lat:4.9588,lng:8.3269},
+{n:"20th Carolina Spring Break Camp/Classic",d:"13-14 Mar",v:"Pista Basilio Rodriguez, Carolina",c:"PUR",t:"challenger",w:"https://www.google.com/search?q=20th+Carolina+Spring+Break+Camp%2FClassic+Carolina+2026+athletics",wt:"search",lat:18.3809,lng:-65.9528},
+{n:"Adelaide Invitational",d:"13-14 Mar",v:"SA Athletic Stadium, Adelaide",c:"AUS",t:"bronze",w:"https://www.google.com/search?q=Adelaide+Invitational+Adelaide+2026+athletics",wt:"search",lat:-34.9285,lng:138.6007},
+{n:"Maseru International Meet",d:"21 Mar",v:"Setsoto Stadium, Maseru",c:"LES",t:"challenger",w:"https://www.google.com/search?q=Maseru+International+Meet+Maseru+2026+athletics",wt:"search",lat:-29.31,lng:27.4833},
+{n:"Velocity Fest #18",d:"21 Mar",v:"National Stadium, Kingston",c:"JAM",t:"challenger",w:"https://www.google.com/search?q=Velocity+Fest+%2318+Kingston+2026+athletics",wt:"search",lat:17.9712,lng:-76.7936},
+{n:"MTN CHAMPS Continental Relays",d:"26-28 Mar",v:"New Jos Stadium, Jos",c:"NGR",t:"challenger",w:"https://www.google.com/search?q=MTN+CHAMPS+Continental+Relays+Jos+2026+athletics",wt:"search",lat:9.8965,lng:8.8583},
+{n:"Herman Davin Namibian Street Event",d:"27-28 Mar",v:"Robert Mugabe Ave., Windhoek",c:"NAM",t:"bronze",w:"https://www.google.com/search?q=Herman+Davin+Namibian+Street+Event+Windhoek+2026+athletics",wt:"search",lat:-22.5609,lng:17.0658},
+{n:"Maurie Plant Meet",d:"27-28 Mar",v:"Lakeside Stadium, Melbourne",c:"AUS",t:"gold",w:"https://athletics.com.au/events/maurie-plant-meet/",wt:"official",lat:-37.8136,lng:144.9631},
+{n:"The TEN",d:"28 Mar",v:"JSerra Catholic HS, San Juan Capistrano, CA",c:"USA",t:"silver",w:"https://www.google.com/search?q=The+TEN+CA+2026+athletics",wt:"search",lat:33.5017,lng:-117.6626},
+{n:"Clyde Littlefield Texas Relays",d:"01-04 Apr",v:"Mike A. Myers Stadium, Austin, TX",c:"USA",t:"challenger",w:"https://www.google.com/search?q=Clyde+Littlefield+Texas+Relays+TX+2026+athletics",wt:"search",lat:30.2672,lng:-97.7431},
+{n:"Meeting International de Djibouti",d:"03 Apr",v:"Stade Gouled, Djibouti",c:"DJI",t:"bronze",w:"https://www.google.com/search?q=Meeting+International+de+Djibouti+Djibouti+2026+athletics",wt:"search",lat:11.5721,lng:43.1456},
+{n:"Pepsi Florida Relays",d:"03-04 Apr",v:"Percy Beard Track, Gainesville, FL",c:"USA",t:"challenger",w:"https://www.google.com/search?q=Pepsi+Florida+Relays+FL+2026+athletics",wt:"search",lat:29.6516,lng:-82.3248},
+{n:"Miramar Invitational",d:"04 Apr",v:"Ansin Sports Complex, Miramar, FL",c:"USA",t:"silver",w:"https://www.google.com/search?q=Miramar+Invitational+FL+2026+athletics",wt:"search",lat:25.9873,lng:-80.2323},
+{n:"Hezekiel Sepeng Invitational",d:"07 Apr",v:"McArthur Stadium, Potchefstroom",c:"RSA",t:"challenger",w:"https://www.google.com/search?q=Hezekiel+Sepeng+Invitational+Potchefstroom+2026+athletics",wt:"search",lat:-26.7145,lng:27.0974},
+{n:"44 Farms Team Invitational",d:"09-11 Apr",v:"Cushing Stadium, College Station, TX",c:"USA",t:"challenger",w:"https://www.google.com/search?q=44+Farms+Team+Invitational+TX+2026+athletics",wt:"search",lat:30.628,lng:-96.3344},
+{n:"Bryan Clay Invitational",d:"09-18 Apr",v:"Cougar Athletic Stadium, Azusa, CA",c:"USA",t:"challenger",w:"https://www.google.com/search?q=Bryan+Clay+Invitational+CA+2026+athletics",wt:"search",lat:34.1336,lng:-117.9076},
+{n:"Cape Miller Continental Tour",d:"10 Apr",v:"Hoerskool Stadium, Stellenbosch",c:"RSA",t:"challenger",w:"https://www.google.com/search?q=Cape+Miller+Continental+Tour+Stellenbosch+2026+athletics",wt:"search",lat:-33.9321,lng:18.8602},
+{n:"Oklahoma Throws Series World Invitational",d:"10-13 Apr",v:"Throw Town, Ramona, OK",c:"USA",t:"bronze",w:"https://www.google.com/search?q=Oklahoma+Throws+Series+World+Invitational+OK+2026+athletics",wt:"search",lat:36.5326,lng:-95.9225},
+{n:"Road-To-Botswana Golden Grand Prix",d:"11 Apr",v:"National Stadium, Gaborone",c:"BOT",t:"challenger",w:"https://www.google.com/search?q=Road-To-Botswana+Golden+Grand+Prix+Gaborone+2026+athletics",wt:"search",lat:-24.6282,lng:25.9231},
+{n:"MTN CHAMPS Grand Final",d:"15-18 Apr",v:"Lekan Salami Stadium, Ibadan",c:"NGR",t:"challenger",w:"https://www.google.com/search?q=MTN+CHAMPS+Grand+Final+Ibadan+2026+athletics",wt:"search",lat:7.3775,lng:3.947},
+{n:"Tom Jones Memorial",d:"17-18 Apr",v:"Percy Beard Track, Gainesville, FL",c:"USA",t:"challenger",w:"https://www.google.com/search?q=Tom+Jones+Memorial+FL+2026+athletics",wt:"search",lat:29.6516,lng:-82.3248},
+{n:"Addis Ababa Grand Prix",d:"18 Apr",v:"Ethiopian Sport Academy, Addis Ababa",c:"ETH",t:"bronze",w:"https://www.google.com/search?q=Addis+Ababa+Grand+Prix+Addis+Ababa+2026+athletics",wt:"search",lat:9.032,lng:38.7469},
+{n:"Challenger Continental Tour Ciudad de Buenos Aires",d:"18 Apr",v:"CeNARD, Buenos Aires",c:"ARG",t:"challenger",w:"https://www.google.com/search?q=Challenger+Continental+Tour+Ciudad+de+Buenos+Aires+Buenos+Aires+2026+athletics",wt:"search",lat:-34.6037,lng:-58.3816},
+{n:"Mt. SAC Relays",d:"18 Apr",v:"Hilmer Lodge Stadium, Walnut, CA",c:"USA",t:"bronze",w:"https://www.google.com/search?q=Mt.+SAC+Relays+CA+2026+athletics",wt:"search",lat:34.0203,lng:-117.8653},
+{n:"Velocity Fest #19",d:"18 Apr",v:"National Stadium, Kingston",c:"JAM",t:"challenger",w:"https://www.google.com/search?q=Velocity+Fest+%2319+Kingston+2026+athletics",wt:"search",lat:17.9712,lng:-76.7936},
+{n:"Nurullah Ivak Throwing Cup",d:"18-19 Apr",v:"Ataturk Stadyumu, Izmir",c:"TUR",t:"challenger",w:"https://www.google.com/search?q=Nurullah+Ivak+Throwing+Cup+Izmir+2026+athletics",wt:"search",lat:38.4192,lng:27.1287},
+{n:"Challenger Continental Tour Hugo M. La Nasa",d:"19 Apr",v:"CeNARD, Buenos Aires",c:"ARG",t:"challenger",w:"https://www.google.com/search?q=Challenger+Continental+Tour+Hugo+M.+La+Nasa+Buenos+Aires+2026+athletics",wt:"search",lat:-34.6037,lng:-58.3816},
+{n:"Continental Tour Orlando Guaita",d:"19 Apr",v:"Mario Recordon, Santiago de Chile",c:"CHI",t:"bronze",w:"https://www.google.com/search?q=Continental+Tour+Orlando+Guaita+Santiago+de+Chile+2026+athletics",wt:"search",lat:-33.4489,lng:-70.6693},
+{n:"116th Drake Relays",d:"22-25 Apr",v:"Drake Stadium, Des Moines, IA",c:"USA",t:"silver",w:"https://www.google.com/search?q=116th+Drake+Relays+IA+2026+athletics",wt:"search",lat:41.5868,lng:-93.625},
+{n:"Penn Relay Carnival",d:"23-25 Apr",v:"Franklin Field, Philadelphia, PA",c:"USA",t:"silver",w:"https://www.google.com/search?q=Penn+Relay+Carnival+PA+2026+athletics",wt:"search",lat:39.9526,lng:-75.1652},
+{n:"Kip Keino Classic",d:"24 Apr",v:"Nyayo National Stadium, Nairobi",c:"KEN",t:"gold",w:"https://www.kipkeinoclassic.com/",wt:"official",lat:-1.2921,lng:36.8219},
+{n:"Grand Prix Estrella Puente",d:"25 Apr",v:"Darwin Pineyrua, Montevideo",c:"URU",t:"challenger",w:"https://www.google.com/search?q=Grand+Prix+Estrella+Puente+Montevideo+2026+athletics",wt:"search",lat:-34.9011,lng:-56.1645},
+{n:"Botswana Golden Grand Prix",d:"26 Apr",v:"National Stadium, Gaborone",c:"BOT",t:"silver",w:"https://www.google.com/search?q=Botswana+Golden+Grand+Prix+Gaborone+2026+athletics",wt:"search",lat:-24.6282,lng:25.9231},
+{n:"Grand Prix Darwin Pineyrua",d:"26 Apr",v:"Darwin Pineyrua, Montevideo",c:"URU",t:"challenger",w:"https://www.google.com/search?q=Grand+Prix+Darwin+Pineyrua+Montevideo+2026+athletics",wt:"search",lat:-34.9011,lng:-56.1645},
+{n:"Simbine Classic",d:"28 Apr",v:"Pilditch Stadium, Pretoria",c:"RSA",t:"silver",w:"https://www.google.com/search?q=Simbine+Classic+Pretoria+2026+athletics",wt:"search",lat:-25.7479,lng:28.2293},
+{n:"60th Oda Mikio Memorial",d:"29 Apr",v:"Municipal Stadium, Hiroshima",c:"JPN",t:"bronze",w:"https://www.google.com/search?q=60th+Oda+Mikio+Memorial+Hiroshima+2026+athletics",wt:"search",lat:34.3853,lng:132.4553},
+{n:"Drake Relays Vault at Jordan Creek",d:"01 May",v:"Jordan Creek, Des Moines, IA",c:"USA",t:"silver",w:"https://www.google.com/search?q=Drake+Relays+Vault+at+Jordan+Creek+IA+2026+athletics",wt:"search",lat:41.5868,lng:-93.625},
+{n:"LSU Invitational",d:"02 May",v:"Bernie Moore Stadium, Baton Rouge, LA",c:"USA",t:"challenger",w:"https://www.google.com/search?q=LSU+Invitational+LA+2026+athletics",wt:"search",lat:30.4515,lng:-91.1871},
+{n:"UAE Athletics Grand Prix",d:"02 May",v:"Dubai Police Club Stadium, Dubai",c:"UAE",t:"bronze",w:"https://www.google.com/search?q=UAE+Athletics+Grand+Prix+Dubai+2026+athletics",wt:"search",lat:25.2048,lng:55.2708},
+{n:"41st Shizuoka International",d:"03 May",v:"Prefectural Shizuoka Stadium, Fukuroi",c:"JPN",t:"bronze",w:"https://www.google.com/search?q=41st+Shizuoka+International+Fukuroi+2026+athletics",wt:"search",lat:34.75,lng:137.925},
+{n:"ESET WMD-Night",d:"03 May",v:"Centro di Atletica, Busto Arsizio",c:"ITA",t:"challenger",w:"https://www.google.com/search?q=ESET+WMD-Night+Busto+Arsizio+2026+athletics",wt:"search",lat:45.6119,lng:8.8492},
+{n:"UAE Athletics Women's Gala",d:"03 May",v:"Dubai Police Club Stadium, Dubai",c:"UAE",t:"challenger",w:"https://www.google.com/search?q=UAE+Athletics+Women%27s+Gala+Dubai+2026+athletics",wt:"search",lat:25.2048,lng:55.2708},
+{n:"Oman Athletics Grand Prix",d:"05 May",v:"Sultan Qaboos Sports Complex, Muscat",c:"OMA",t:"challenger",w:"https://www.google.com/search?q=Oman+Athletics+Grand+Prix+Muscat+2026+athletics",wt:"search",lat:23.588,lng:58.3829},
+{n:"19. Hvezdne hazeni",d:"08 May",v:"Mestsky stadion Strelnice, Domazlice",c:"CZE",t:"bronze",w:"https://www.google.com/search?q=19.+Hvezdne+hazeni+Domazlice+2026+athletics",wt:"search",lat:49.4403,lng:12.9283},
+{n:"International Pegaso Meeting",d:"09 May",v:"Stadio Luigi Ridolfi, Firenze",c:"ITA",t:"challenger",w:"https://www.google.com/search?q=International+Pegaso+Meeting+Firenze+2026+athletics",wt:"search",lat:43.7696,lng:11.2558},
+{n:"Portland Twilight",d:"09 May",v:"Griswold Stadium, Portland, OR",c:"USA",t:"challenger",w:"https://www.google.com/search?q=Portland+Twilight+OR+2026+athletics",wt:"search",lat:45.5152,lng:-122.6784},
+{n:"Ter Specke Bokaal",d:"09 May",v:"Sportpark Ter Specke, Lisse",c:"NED",t:"challenger",w:"https://www.google.com/search?q=Ter+Specke+Bokaal+Lisse+2026+athletics",wt:"search",lat:52.2585,lng:4.5546},
+{n:"The Belfast Classic",d:"09 May",v:"Mary Peters Track, Belfast",c:"GBR",t:"challenger",w:"https://www.google.com/search?q=The+Belfast+Classic+Belfast+2026+athletics",wt:"search",lat:54.5973,lng:-5.9301},
+{n:"13th Kinami Michitaka Memorial",d:"10 May",v:"Yanmar Stadium Nagai, Osaka",c:"JPN",t:"bronze",w:"https://www.google.com/search?q=13th+Kinami+Michitaka+Memorial+Osaka+2026+athletics",wt:"search",lat:34.6937,lng:135.5023},
+{n:"KPMG Prague Night of PBs",d:"14 May",v:"Atleticky stadion Dekanka, Praha",c:"CZE",t:"challenger",w:"https://www.google.com/search?q=KPMG+Prague+Night+of+PBs+Praha+2026+athletics",wt:"search",lat:50.0755,lng:14.4378},
+{n:"Saudi Athletics Grand Prix",d:"15 May",v:"Prince Faisal Bin Fahad Stadium, Riyadh",c:"KSA",t:"bronze",w:"https://www.google.com/search?q=Saudi+Athletics+Grand+Prix+Riyadh+2026+athletics",wt:"search",lat:24.7136,lng:46.6753},
+{n:"4.Internationales Hochsprungmeeting",d:"16 May",v:"Zitadelle Spandau, Berlin",c:"GER",t:"challenger",w:"https://www.google.com/search?q=4.Internationales+Hochsprungmeeting+Berlin+2026+athletics",wt:"search",lat:52.52,lng:13.405},
+{n:"British Milers Club Grand Prix",d:"16 May",v:"Longford Stadium, Manchester",c:"GBR",t:"challenger",w:"https://www.google.com/search?q=British+Milers+Club+Grand+Prix+Manchester+2026+athletics",wt:"search",lat:53.4808,lng:-2.2426},
+{n:"Next Generation Athletics",d:"16 May",v:"Atletiekbaan Brakkenstein, Nijmegen",c:"NED",t:"challenger",w:"https://www.google.com/search?q=Next+Generation+Athletics+Nijmegen+2026+athletics",wt:"search",lat:51.8126,lng:5.8372},
+{n:"Saudi Athletics Challenger",d:"16 May",v:"Prince Faisal Bin Fahad Stadium, Riyadh",c:"KSA",t:"challenger",w:"https://www.google.com/search?q=Saudi+Athletics+Challenger+Riyadh+2026+athletics",wt:"search",lat:24.7136,lng:46.6753},
+{n:"Vergotia 2026",d:"16 May",v:"Andreas Vergotis Municipal Stadium, Argostoli",c:"GRE",t:"challenger",w:"https://www.google.com/search?q=Vergotia+2026+Argostoli+2026+athletics",wt:"search",lat:38.1744,lng:20.4856},
+{n:"51. Halplus Werfertage",d:"16-17 May",v:"Werferzentrum Brandberge, Halle",c:"GER",t:"challenger",w:"https://www.google.com/search?q=51.+Halplus+Werfertage+Halle+2026+athletics",wt:"search",lat:51.4969,lng:11.9689},
+{n:"Coqui International Cup",d:"17 May",v:"Paseo de los Artistas, Caguas",c:"PUR",t:"silver",w:"https://www.google.com/search?q=Coqui+International+Cup+Caguas+2026+athletics",wt:"search",lat:18.2342,lng:-66.0356},
+{n:"Internationales Laufermeeting",d:"17 May",v:"Schonbuchstadion, Pliezhausen",c:"GER",t:"challenger",w:"https://www.google.com/search?q=Internationales+Laufermeeting+Pliezhausen+2026+athletics",wt:"search",lat:48.575,lng:9.2083},
+{n:"SEIKO Golden Grand Prix",d:"17 May",v:"National Stadium, Tokyo",c:"JPN",t:"gold",w:"https://www.jaaf.or.jp/gp/",wt:"official",lat:35.6762,lng:139.6503},
+{n:"Belt and Road Athletics",d:"18-19 May",v:"Changshou Sports Center, Chongqing",c:"CHN",t:"silver",w:"https://www.google.com/search?q=Belt+and+Road+Athletics+Chongqing+2026+athletics",wt:"search",lat:29.4316,lng:106.9123},
+{n:"15th Savona International Meeting",d:"20 May",v:"Centro Sportivo Fontanassa, Savona",c:"ITA",t:"bronze",w:"https://www.google.com/search?q=15th+Savona+International+Meeting+Savona+2026+athletics",wt:"search",lat:44.3081,lng:8.4811},
+{n:"Desafio Nerja",d:"20 May",v:"Estadio Enrique Lopez Cuenca, Nerja",c:"ESP",t:"challenger",w:"https://www.google.com/search?q=Desafio+Nerja+Nerja+2026+athletics",wt:"search",lat:-2.9006,lng:-79.0045},
+{n:"Egypt Athletics Grand Prix",d:"20 May",v:"Suez Canal Authority Stadium, Ismailia",c:"EGY",t:"challenger",w:"https://www.google.com/search?q=Egypt+Athletics+Grand+Prix+Ismailia+2026+athletics",wt:"search",lat:30.5877,lng:32.2653},
+{n:"Kifisia Jump",d:"22-23 May",v:"Kifisia",c:"GRE",t:"challenger",w:"https://www.google.com/search?q=Kifisia+Jump+Kifisia+2026+athletics",wt:"search",lat:38.0744,lng:23.8131},
+{n:"50. Pfingstmeeting",d:"23 May",v:"Stadion Trinermatten, Zofingen",c:"SUI",t:"challenger",w:"https://www.google.com/search?q=50.+Pfingstmeeting+Zofingen+2026+athletics",wt:"search",lat:47.2879,lng:7.9456},
+{n:"LA Track Festival",d:"23 May",v:"Drake Stadium, Los Angeles, CA",c:"USA",t:"silver",w:"https://www.google.com/search?q=LA+Track+Festival+CA+2026+athletics",wt:"search",lat:34.0522,lng:-118.2437},
+{n:"Sparet 5000m",d:"23 May",v:"Olympiastadion, Stockholm",c:"SWE",t:"challenger",w:"https://www.google.com/search?q=Sparet+5000m+Stockholm+2026+athletics",wt:"search",lat:59.3293,lng:18.0686},
+{n:"TIPOS Challenge Slovakia",d:"23 May",v:"Atleticky stadion, Martin",c:"SVK",t:"challenger",w:"https://www.google.com/search?q=TIPOS+Challenge+Slovakia+Martin+2026+athletics",wt:"search",lat:49.0664,lng:18.9216},
+{n:"Tuscon Elite Throws",d:"23 May",v:"Drachman Stadium, Tucson, AZ",c:"USA",t:"silver",w:"https://www.google.com/search?q=Tuscon+Elite+Throws+AZ+2026+athletics",wt:"search",lat:32.2226,lng:-110.9747},
+{n:"22. Sparkassen Hammerwurf-Meeting",d:"23-24 May",v:"Betty Heidler Arena, Frankisch-Crumbach",c:"GER",t:"challenger",w:"https://www.google.com/search?q=22.+Sparkassen+Hammerwurf-Meeting+Frankisch-Crumbach+2026+athletics",wt:"search",lat:49.7339,lng:8.8539},
+{n:"IFAM Outdoor",d:"23-24 May",v:"Boudewijnstadion, Bruxelles",c:"BEL",t:"bronze",w:"https://www.google.com/search?q=IFAM+Outdoor+Bruxelles+2026+athletics",wt:"search",lat:50.8503,lng:4.3517},
+{n:"61. Pfingstsportfest Rehlingen",d:"24 May",v:"Bungertstadion, Rehlingen",c:"GER",t:"silver",w:"https://www.google.com/search?q=61.+Pfingstsportfest+Rehlingen+Rehlingen+2026+athletics",wt:"search",lat:49.3594,lng:6.8506},
+{n:"Alexandrino Meeting",d:"24 May",v:"Municipal Sports Center, Alexandria",c:"GRE",t:"challenger",w:"https://www.google.com/search?q=Alexandrino+Meeting+Alexandria+2026+athletics",wt:"search",lat:31.2001,lng:29.9187},
+{n:"Lisek w domu International Pole Vault",d:"24 May",v:"Centrum Animacji Kultury, Duszniki",c:"POL",t:"bronze",w:"https://www.google.com/search?q=Lisek+w+domu+International+Pole+Vault+Duszniki+2026+athletics",wt:"search",lat:52.4697,lng:16.3983},
+{n:"Memorial Ludvika Danka",d:"26 May",v:"Atleticky stadion Turnov, Turnov",c:"CZE",t:"challenger",w:"https://www.google.com/search?q=Memorial+Ludvika+Danka+Turnov+2026+athletics",wt:"search",lat:50.5872,lng:15.1561},
+{n:"15th Filathlitkos Kallitheas Jump",d:"27 May",v:"Grigoris Lambrakis Stadium, Kallithea",c:"GRE",t:"bronze",w:"https://www.google.com/search?q=15th+Filathlitkos+Kallitheas+Jump+Kallithea+2026+athletics",wt:"search",lat:37.9522,lng:23.7036},
+{n:"Canarias Athletics Invitational",d:"27 May",v:"Centro de Atletismo, Santa Cruz de Tenerife",c:"ESP",t:"silver",w:"https://www.google.com/search?q=Canarias+Athletics+Invitational+Santa+Cruz+de+Tenerife+2026+athletics",wt:"search",lat:28.4636,lng:-16.2518},
+{n:"JBL Jump Fest",d:"27 May",v:"Alzbetina street, Kosice",c:"SVK",t:"silver",w:"https://www.google.com/search?q=JBL+Jump+Fest+Kosice+2026+athletics",wt:"search",lat:48.7164,lng:21.2611},
+{n:"Trond Mohn Games",d:"28 May",v:"Fana Stadion, Bergen",c:"NOR",t:"silver",w:"https://www.google.com/search?q=Trond+Mohn+Games+Bergen+2026+athletics",wt:"search",lat:60.3913,lng:5.3221},
+{n:"44. Marktplatzspringen Recklinghausen",d:"29 May",v:"Altstadtmarkt, Recklinghausen",c:"GER",t:"challenger",w:"https://www.google.com/search?q=44.+Marktplatzspringen+Recklinghausen+Recklinghausen+2026+athletics",wt:"search",lat:51.5864,lng:7.1853},
+{n:"8th Irena Szewinska Memorial",d:"29 May",v:"Zdzislaw Krzyszkowiak Stadium, Bydgoszcz",c:"POL",t:"gold",w:"https://memorialszewinskiej.pl/",wt:"official",lat:53.1235,lng:18.0084},
+{n:"Cyprus International Athletics Meeting",d:"29 May",v:"Tsirio Stadium, Limassol",c:"CYP",t:"bronze",w:"https://www.google.com/search?q=Cyprus+International+Athletics+Meeting+Limassol+2026+athletics",wt:"search",lat:34.7071,lng:33.0227},
+{n:"Meeting National de Seine et Marne",d:"29 May",v:"Stade Philippe Mahut, Fontainebleau",c:"FRA",t:"challenger",w:"https://www.google.com/search?q=Meeting+National+de+Seine+et+Marne+Fontainebleau+2026+athletics",wt:"search",lat:48.4084,lng:2.7019},
+{n:"Music City Track Carnival",d:"29-30 May",v:"Ray Conn Sports Complex, Cleveland, TN",c:"USA",t:"challenger",w:"https://www.google.com/search?q=Music+City+Track+Carnival+TN+2026+athletics",wt:"search",lat:35.1595,lng:-84.8766},
+{n:"10. PUMA NITRO Lange Laufnacht",d:"30 May",v:"Carl-Kaufmann-Stadion, Karlsruhe",c:"GER",t:"challenger",w:"https://www.google.com/search?q=10.+PUMA+NITRO+Lange+Laufnacht+Karlsruhe+2026+athletics",wt:"search",lat:49.0069,lng:8.4037},
+{n:"19 Triveneto Meeting",d:"30 May",v:"Campo Sportivo G. Draghicchio, Trieste",c:"ITA",t:"challenger",w:"https://www.google.com/search?q=19+Triveneto+Meeting+Trieste+2026+athletics",wt:"search",lat:45.6495,lng:13.7768},
+{n:"British Milers Club Grand Prix",d:"30 May",v:"Birmingham University, Birmingham",c:"GBR",t:"challenger",w:"https://www.google.com/search?q=British+Milers+Club+Grand+Prix+Birmingham+2026+athletics",wt:"search",lat:52.4862,lng:-1.8904},
+{n:"Busan International Pole Vault",d:"30 May",v:"Gwangalli beach, Busan",c:"KOR",t:"challenger",w:"https://www.google.com/search?q=Busan+International+Pole+Vault+Busan+2026+athletics",wt:"search",lat:35.1796,lng:129.0756},
+{n:"Grand Prix International",d:"30 May",v:"Stade de la Reunification, Douala",c:"CMR",t:"silver",w:"https://www.google.com/search?q=Grand+Prix+International+Douala+2026+athletics",wt:"search",lat:4.0511,lng:9.7679},
+{n:"Twolaps Middle Distance Circuit",d:"30 May",v:"Okura Sports Park, Tokyo",c:"JPN",t:"bronze",w:"https://www.google.com/search?q=Twolaps+Middle+Distance+Circuit+Tokyo+2026+athletics",wt:"search",lat:35.6762,lng:139.6503},
+{n:"Bob Vigars Classic",d:"31 May",v:"Alumni Stadium, London",c:"CAN",t:"bronze",w:"https://www.google.com/search?q=Bob+Vigars+Classic+London+2026+athletics",wt:"search",lat:42.9849,lng:-81.2453},
+{n:"Goldenes Oval",d:"31 May",v:"Heinz-Steyer-Stadion, Dresden",c:"GER",t:"silver",w:"https://www.google.com/search?q=Goldenes+Oval+Dresden+2026+athletics",wt:"search",lat:51.0504,lng:13.7373},
+{n:"Atletski Miting Ptuj",d:"31 May",v:"Mestni stadion, Ptuj",c:"SLO",t:"challenger",w:"https://www.google.com/search?q=Atletski+Miting+Ptuj+Ptuj+2026+athletics",wt:"search",lat:46.4214,lng:15.8695},
+{n:"Meeting International de Forbach",d:"31 May",v:"Stade Omnisports Schlossberg, Forbach",c:"FRA",t:"bronze",w:"https://www.google.com/search?q=Meeting+International+de+Forbach+Forbach+2026+athletics",wt:"search",lat:49.1859,lng:6.902},
+{n:"Mityng na Rynku w Bialymstoku",d:"31 May",v:"Market square, Bialystok",c:"POL",t:"bronze",w:"https://www.google.com/search?q=Mityng+na+Rynku+w+Bialymstoku+Bialystok+2026+athletics",wt:"search",lat:53.1325,lng:23.1688},
+{n:"Venizeleia-Chania International Meeting",d:"31 May",v:"Elena Venizelou Stadium, Chania",c:"GRE",t:"bronze",w:"https://www.google.com/search?q=Venizeleia-Chania+International+Meeting+Chania+2026+athletics",wt:"search",lat:35.5138,lng:24.018},
+{n:"Josef Odlozil Memorial",d:"01 Jun",v:"Stadion Juliska, Praha",c:"CZE",t:"bronze",w:"https://www.google.com/search?q=Josef+Odlozil+Memorial+Praha+2026+athletics",wt:"search",lat:50.0755,lng:14.4378},
+{n:"EAP XX Atletica 2000 Meeting",d:"02 Jun",v:"Polisportivo Comunale, San Vito al Tagliamento",c:"ITA",t:"challenger",w:"https://www.google.com/search?q=EAP+XX+Atletica+2000+Meeting+San+Vito+al+Tagliamento+2026+athletics",wt:"search",lat:45.9167,lng:12.85},
+{n:"Filothei Women Gala",d:"03 Jun",v:"Filothei Stadium, Athina",c:"GRE",t:"bronze",w:"https://www.google.com/search?q=Filothei+Women+Gala+Athina+2026+athletics",wt:"search",lat:37.9838,lng:23.7275},
+{n:"Granada Challenger",d:"03 Jun",v:"Estadio de la Juventud, Granada",c:"ESP",t:"challenger",w:"https://www.google.com/search?q=Granada+Challenger+Granada+2026+athletics",wt:"search",lat:37.1773,lng:-3.5986},
+{n:"Paavo Nurmi Games",d:"03 Jun",v:"Paavo Nurmen Stadion, Turku",c:"FIN",t:"gold",w:"https://paavonurmigames.fi/",wt:"official",lat:60.4518,lng:22.2666},
+{n:"Royal City Inferno Track and Field Festival",d:"03 Jun",v:"Alumni Stadium, Guelph",c:"CAN",t:"bronze",w:"https://www.google.com/search?q=Royal+City+Inferno+Track+and+Field+Festival+Guelph+2026+athletics",wt:"search",lat:43.5448,lng:-80.2482},
+{n:"21. memorial Sustersica in Cvetana",d:"04 Jun",v:"Atletski stadion Poljane, Maribor",c:"SLO",t:"challenger",w:"https://www.google.com/search?q=21.+memorial+Sustersica+in+Cvetana+Maribor+2026+athletics",wt:"search",lat:46.5547,lng:15.6459},
+{n:"HOKA Festival of Miles",d:"04 Jun",v:"St.Louis University High School, St. Louis",c:"USA",t:"challenger",w:"https://www.google.com/search?q=HOKA+Festival+of+Miles+St.+Louis+2026+athletics",wt:"search",lat:38.627,lng:-90.1994},
+{n:"Liese Prokop Memorial",d:"04 Jun",v:"Sportzentrum Niederosterreich, St. Polten",c:"AUT",t:"bronze",w:"https://www.google.com/search?q=Liese+Prokop+Memorial+St.+Polten+2026+athletics",wt:"search",lat:48.2,lng:15.6333},
+{n:"1500m Elite Jessheim",d:"05 Jun",v:"Friidrettsstadion, Jessheim",c:"NOR",t:"bronze",w:"https://www.google.com/search?q=1500m+Elite+Jessheim+Jessheim+2026+athletics",wt:"search",lat:60.1417,lng:11.1744},
+{n:"16. Sparkassenmeeting",d:"05 Jun",v:"Jahnstadion, Osterode",c:"GER",t:"challenger",w:"https://www.google.com/search?q=16.+Sparkassenmeeting+Osterode+2026+athletics",wt:"search",lat:51.7267,lng:10.2503},
+{n:"Taby Stavhoppsgala",d:"05 Jun",v:"Taby torg, Taby",c:"SWE",t:"challenger",w:"https://www.google.com/search?q=Taby+Stavhoppsgala+Taby+2026+athletics",wt:"search",lat:59.4441,lng:18.0686},
+{n:"Touch the clouds festival",d:"05-07 Jun",v:"G-Town Track, Grafelfing",c:"GER",t:"bronze",w:"https://www.google.com/search?q=Touch+the+clouds+festival+Grafelfing+2026+athletics",wt:"search",lat:48.1197,lng:11.4353},
+{n:"Gorzow Meeting",d:"06 Jun",v:"Stadion Lubuskich Olimpijczykow, Gorzow Wielkopolski",c:"POL",t:"challenger",w:"https://www.google.com/search?q=Gorzow+Meeting+Gorzow+Wielkopolski+2026+athletics",wt:"search",lat:52.7325,lng:15.2369},
+{n:"Izmir Cup",d:"06 Jun",v:"Ataturk Stadyumu, Izmir",c:"TUR",t:"challenger",w:"https://www.google.com/search?q=Izmir+Cup+Izmir+2026+athletics",wt:"search",lat:38.4192,lng:27.1287},
+{n:"Papaflessia 2026",d:"06 Jun",v:"Ethnikou Stadiou, Kalamata",c:"GRE",t:"challenger",w:"https://www.google.com/search?q=Papaflessia+2026+Kalamata+2026+athletics",wt:"search",lat:37.0366,lng:22.1136},
+{n:"The Lightning 10.000",d:"06 Jun",v:"Herrenwaldhalle, Stadtallendorf",c:"GER",t:"challenger",w:"https://www.google.com/search?q=The+Lightning+10.000+Stadtallendorf+2026+athletics",wt:"search",lat:50.8267,lng:9.0144},
+{n:"USATF Lone Star Grand Prix",d:"06 Jun",v:"Cushing Stadium, College Station, TX",c:"USA",t:"gold",w:"https://www.usatf.org/",wt:"official",lat:30.628,lng:-96.3344},
+{n:"Taiwan Athletics Open",d:"06-07 Jun",v:"Banqiao Stadium, New Taipei City",c:"TPE",t:"silver",w:"https://www.google.com/search?q=Taiwan+Athletics+Open+New+Taipei+City+2026+athletics",wt:"search",lat:25.012,lng:121.4657},
+{n:"23. Sparkassen Werfertag",d:"07 Jun",v:"Stadion Erzgebirgsblick, Gelenau",c:"GER",t:"bronze",w:"https://www.google.com/search?q=23.+Sparkassen+Werfertag+Gelenau+2026+athletics",wt:"search",lat:50.69,lng:12.9397},
+{n:"5th Lucca International Meeting",d:"07 Jun",v:"Campo Scuola Moreno Martini, Lucca",c:"ITA",t:"challenger",w:"https://www.google.com/search?q=5th+Lucca+International+Meeting+Lucca+2026+athletics",wt:"search",lat:49.0664,lng:18.9216},
+{n:"Halina Konopacka Classic",d:"07 Jun",v:"Stadion Podskarbinska, Warszawa",c:"POL",t:"bronze",w:"https://www.google.com/search?q=Halina+Konopacka+Classic+Warszawa+2026+athletics",wt:"search",lat:52.2297,lng:21.0122},
+{n:"Johnny Loaring Classic",d:"07 Jun",v:"Alumni Field, Windsor",c:"CAN",t:"bronze",w:"https://www.google.com/search?q=Johnny+Loaring+Classic+Windsor+2026+athletics",wt:"search",lat:42.3149,lng:-83.0364},
+{n:"The Adrian Martinez Classic",d:"07 Jun",v:"Emerson Field, Concord, MA",c:"USA",t:"challenger",w:"https://www.google.com/search?q=The+Adrian+Martinez+Classic+MA+2026+athletics",wt:"search",lat:42.4604,lng:-71.3489},
+{n:"Kladno hazi",d:"09 Jun",v:"Mestsky Stadion Sletiste, Kladno",c:"CZE",t:"bronze",w:"https://www.google.com/search?q=Kladno+hazi+Kladno+2026+athletics",wt:"search",lat:50.1474,lng:14.1028},
+{n:"Meeting Cidade de Lisboa",d:"10 Jun",v:"Estadio Universitario, Lisboa",c:"POR",t:"challenger",w:"https://www.google.com/search?q=Meeting+Cidade+de+Lisboa+Lisboa+2026+athletics",wt:"search",lat:38.7223,lng:-9.1393},
+{n:"Meeting de Marseille",d:"10 Jun",v:"Stade Delort, Marseille",c:"FRA",t:"challenger",w:"https://www.google.com/search?q=Meeting+de+Marseille+Marseille+2026+athletics",wt:"search",lat:43.2965,lng:5.3698},
+{n:"Miting Celjskih Knezov",d:"10 Jun",v:"Stadion Kladivar, Celje",c:"SLO",t:"challenger",w:"https://www.google.com/search?q=Miting+Celjskih+Knezov+Celje+2026+athletics",wt:"search",lat:46.2311,lng:15.2683},
+{n:"Motonet GP Lahti",d:"10 Jun",v:"Stadion, Lahti",c:"FIN",t:"bronze",w:"https://www.google.com/search?q=Motonet+GP+Lahti+Lahti+2026+athletics",wt:"search",lat:60.9827,lng:25.6612},
+{n:"Salix Sub Astra",d:"10-11 Jun",v:"City square, Vrbovec",c:"CRO",t:"challenger",w:"https://www.google.com/search?q=Salix+Sub+Astra+Vrbovec+2026+athletics",wt:"search",lat:45.8833,lng:16.4167},
+{n:"22. Golden Roof Challenge",d:"13 Jun",v:"Maria-Theresien-Strasse, Innsbruck",c:"AUT",t:"challenger",w:"https://www.google.com/search?q=22.+Golden+Roof+Challenge+Innsbruck+2026+athletics",wt:"search",lat:47.2692,lng:11.4041},
+{n:"British Milers Club Grand Prix",d:"13 Jun",v:"Paula Radcliffe Stadium, Loughborough",c:"GBR",t:"challenger",w:"https://www.google.com/search?q=British+Milers+Club+Grand+Prix+Loughborough+2026+athletics",wt:"search",lat:52.7721,lng:-1.2062},
+{n:"Dromia Sprint and Relays Meeting",d:"13 Jun",v:"Konstantinos Baglatzis Stadium, Vari",c:"GRE",t:"silver",w:"https://www.google.com/search?q=Dromia+Sprint+and+Relays+Meeting+Vari+2026+athletics",wt:"search",lat:37.8386,lng:23.7958},
+{n:"EAP Malta International",d:"13 Jun",v:"Marsa Athletics Track, Marsa",c:"MLT",t:"challenger",w:"https://www.google.com/search?q=EAP+Malta+International+Marsa+2026+athletics",wt:"search",lat:35.8833,lng:14.5},
+{n:"Envol Trophee",d:"13 Jun",v:"Chemin d'Yvours, Pierre-Benite",c:"FRA",t:"challenger",w:"https://www.google.com/search?q=Envol+Trophee+Pierre-Benite+2026+athletics",wt:"search",lat:45.7042,lng:4.8275},
+{n:"Fly in SKG Sky",d:"13 Jun",v:"Thessaloniki",c:"GRE",t:"challenger",w:"https://www.google.com/search?q=Fly+in+SKG+Sky+Thessaloniki+2026+athletics",wt:"search",lat:40.6401,lng:22.9444},
+{n:"Gouden Spike",d:"13 Jun",v:"Sportcomplex De Leidse Hout, Leiden",c:"NED",t:"challenger",w:"https://www.google.com/search?q=Gouden+Spike+Leiden+2026+athletics",wt:"search",lat:52.1601,lng:4.497},
+{n:"Meeting d'athletisme de Poitiers",d:"13 Jun",v:"Stade Paul Rebeilleau, Poitiers",c:"FRA",t:"challenger",w:"https://www.google.com/search?q=Meeting+d%27athletisme+de+Poitiers+Poitiers+2026+athletics",wt:"search",lat:46.5802,lng:0.3404},
+{n:"Meeting Nikaia",d:"13 Jun",v:"Parc des Sports C. Ehrmann, Nice",c:"FRA",t:"bronze",w:"https://www.google.com/search?q=Meeting+Nikaia+Nice+2026+athletics",wt:"search",lat:43.7102,lng:7.262},
+{n:"USATF LA Grand Prix",d:"13-14 Jun",v:"Los Angeles, CA",c:"USA",t:"gold",w:"https://www.usatf.org/",wt:"official",lat:34.0522,lng:-118.2437},
+{n:"EUROWINGS Flight Circus",d:"14 Jun",v:"Rheinuferpromenade, Dusseldorf",c:"GER",t:"bronze",w:"https://www.google.com/search?q=EUROWINGS+Flight+Circus+Dusseldorf+2026+athletics",wt:"search",lat:51.2277,lng:6.7735},
+{n:"Folksam Grand Prix Sollentuna",d:"14 Jun",v:"Sollentunavallen, Sollentuna",c:"SWE",t:"bronze",w:"https://www.google.com/search?q=Folksam+Grand+Prix+Sollentuna+Sollentuna+2026+athletics",wt:"search",lat:59.4282,lng:17.9509},
+{n:"Janusz Sidlo Memorial Grand Prix",d:"14 Jun",v:"Forest Stadium, Sopot",c:"POL",t:"challenger",w:"https://www.google.com/search?q=Janusz+Sidlo+Memorial+Grand+Prix+Sopot+2026+athletics",wt:"search",lat:54.4418,lng:18.5601},
+{n:"65th Ostrava Golden Spike",d:"16 Jun",v:"Mestsky Stadion, Ostrava",c:"CZE",t:"gold",w:"https://www.zlatatretra.cz/",wt:"official",lat:49.8209,lng:18.2625},
+{n:"JOHVI 2026 Heino Lipp memorial",d:"16 Jun",v:"Heino Lipp Stadium, Johvi",c:"EST",t:"bronze",w:"https://www.google.com/search?q=JOHVI+2026+Heino+Lipp+memorial+Johvi+2026+athletics",wt:"search",lat:59.3592,lng:27.4211},
+{n:"Lundahoppet",d:"16 Jun",v:"Centrala IP, Lund",c:"SWE",t:"challenger",w:"https://www.google.com/search?q=Lundahoppet+Lund+2026+athletics",wt:"search",lat:55.7047,lng:13.191},
+{n:"COSMA Cup",d:"17 Jun",v:"Palangos Stadionas, Palanga",c:"LTU",t:"bronze",w:"https://www.google.com/search?q=COSMA+Cup+Palanga+2026+athletics",wt:"search",lat:55.9167,lng:21.0667},
+{n:"Langloparnas Kvall",d:"17 Jun",v:"Olympiastadion, Stockholm",c:"SWE",t:"challenger",w:"https://www.google.com/search?q=Langloparnas+Kvall+Stockholm+2026+athletics",wt:"search",lat:59.3293,lng:18.0686},
+{n:"Meeting International de Montreuil",d:"17 Jun",v:"Stade Jean Delbert, Montreuil",c:"FRA",t:"bronze",w:"https://www.google.com/search?q=Meeting+International+de+Montreuil+Montreuil+2026+athletics",wt:"search",lat:48.8637,lng:2.4414},
+{n:"Grand Prix Usti nad Labem",d:"18 Jun",v:"Mestsky stadion, Usti nad Labem",c:"CZE",t:"bronze",w:"https://www.google.com/search?q=Grand+Prix+Usti+nad+Labem+Usti+nad+Labem+2026+athletics",wt:"search",lat:50.6607,lng:14.0326},
+{n:"Meeting Internacional Ciudad de Malaga",d:"18 Jun",v:"Estadio Ciudad de Malaga, Malaga",c:"ESP",t:"challenger",w:"https://www.google.com/search?q=Meeting+Internacional+Ciudad+de+Malaga+Malaga+2026+athletics",wt:"search",lat:36.7213,lng:-4.4214},
+{n:"Iron Wood Classic",d:"18-20 Jun",v:"Iron Wood Throwers Center, Rathdrum, ID",c:"USA",t:"bronze",w:"https://www.google.com/search?q=Iron+Wood+Classic+ID+2026+athletics",wt:"search",lat:47.8122,lng:-116.8958},
+{n:"28. Anhalt Meeting Dessau",d:"19 Jun",v:"Paul-Greifzu-Stadion, Dessau",c:"GER",t:"bronze",w:"https://www.google.com/search?q=28.+Anhalt+Meeting+Dessau+Dessau+2026+athletics",wt:"search",lat:51.8311,lng:12.2456},
+{n:"40 Meeting International Montgeron-Essonne",d:"19 Jun",v:"Stade Pierre de Coubertin, Montgeron",c:"FRA",t:"bronze",w:"https://www.google.com/search?q=40+Meeting+International+Montgeron-Essonne+Montgeron+2026+athletics",wt:"search",lat:48.7034,lng:2.4586},
+{n:"Benfica Athletics Meeting",d:"19 Jun",v:"Pista Municipal Mario Moniz Pereira, Lisboa",c:"POR",t:"challenger",w:"https://www.google.com/search?q=Benfica+Athletics+Meeting+Lisboa+2026+athletics",wt:"search",lat:38.7223,lng:-9.1393},
+{n:"20. Schonebecker SoleCup",d:"20 Jun",v:"UNION-Stadion, Schonebeck",c:"GER",t:"bronze",w:"https://www.google.com/search?q=20.+Schonebecker+SoleCup+Schonebeck+2026+athletics",wt:"search",lat:52.0192,lng:11.7378},
+{n:"ATX Classic",d:"20 Jun",v:"Southwestern University, Georgetown, TX",c:"USA",t:"bronze",w:"https://www.google.com/search?q=ATX+Classic+TX+2026+athletics",wt:"search",lat:30.6333,lng:-97.6779},
+{n:"Bottnarydskastet International",d:"20 Jun",v:"Bottnaryds IP, Bottnaryd",c:"SWE",t:"bronze",w:"https://www.google.com/search?q=Bottnarydskastet+International+Bottnaryd+2026+athletics",wt:"search",lat:57.8667,lng:13.6833},
+{n:"Dobry Mityng Lisek i Przyjaciele",d:"20 Jun",v:"Szczecinska Street, Dobra",c:"POL",t:"challenger",w:"https://www.google.com/search?q=Dobry+Mityng+Lisek+i+Przyjaciele+Dobra+2026+athletics",wt:"search",lat:53.4285,lng:14.5528},
+{n:"Festival Lancers",d:"20 Jun",v:"Stade Marcel Roustan, Salon-de-Provence",c:"FRA",t:"challenger",w:"https://www.google.com/search?q=Festival+Lancers+Salon-de-Provence+2026+athletics",wt:"search",lat:43.6406,lng:5.0978},
+{n:"Meeting Annecy",d:"20 Jun",v:"Parc des Sports, Annecy",c:"FRA",t:"challenger",w:"https://www.google.com/search?q=Meeting+Annecy+Annecy+2026+athletics",wt:"search",lat:45.8992,lng:6.1294},
+{n:"Motonet GP Kuortane",d:"20 Jun",v:"Kuortaneen keskusurheilukentta, Kuortane",c:"FIN",t:"bronze",w:"https://www.google.com/search?q=Motonet+GP+Kuortane+Kuortane+2026+athletics",wt:"search",lat:62.7967,lng:23.5072},
+{n:"Track Night Vienna",d:"20 Jun",v:"LAZ Wien, Wien",c:"AUT",t:"challenger",w:"https://www.google.com/search?q=Track+Night+Vienna+Wien+2026+athletics",wt:"search",lat:48.2082,lng:16.3738},
+{n:"Korea Athletics Open",d:"20-21 Jun",v:"Yecheon Stadium, Yecheon",c:"KOR",t:"bronze",w:"https://www.google.com/search?q=Korea+Athletics+Open+Yecheon+2026+athletics",wt:"search",lat:36.6575,lng:128.4536},
+{n:"Portland Track Festival",d:"20-21 Jun",v:"Griswold Stadium, Portland, OR",c:"USA",t:"bronze",w:"https://www.google.com/search?q=Portland+Track+Festival+OR+2026+athletics",wt:"search",lat:45.5152,lng:-122.6784},
+{n:"Tag der Uberflieger",d:"20-21 Jun",v:"Kennedyplatz, Essen",c:"GER",t:"silver",w:"https://www.google.com/search?q=Tag+der+Uberflieger+Essen+2026+athletics",wt:"search",lat:51.4556,lng:7.0116},
+{n:"FBK Games",d:"21 Jun",v:"FBK Stadium, Hengelo",c:"NED",t:"gold",w:"https://www.fbkgames.nl/",wt:"official",lat:52.266,lng:6.793},
+{n:"Hylo Javelin Meeting",d:"21 Jun",v:"ETSV Stadion, Offenburg",c:"GER",t:"bronze",w:"https://www.google.com/search?q=Hylo+Javelin+Meeting+Offenburg+2026+athletics",wt:"search",lat:48.4719,lng:7.9446},
+{n:"WGV Leichtathletikfestival",d:"21 Jun",v:"Stuttgart",c:"GER",t:"challenger",w:"https://www.google.com/search?q=WGV+Leichtathletikfestival+Stuttgart+2026+athletics",wt:"search",lat:48.7758,lng:9.1829},
+{n:"Copenhagen Athletics Games",d:"22 Jun",v:"Osterbro Stadium, Copenhagen",c:"DEN",t:"bronze",w:"https://www.google.com/search?q=Copenhagen+Athletics+Games+Copenhagen+2026+athletics",wt:"search",lat:55.6761,lng:12.5683},
+{n:"21. NetAachen Domspringen",d:"23 Jun",v:"Katschhof, Aachen",c:"GER",t:"challenger",w:"https://www.google.com/search?q=21.+NetAachen+Domspringen+Aachen+2026+athletics",wt:"search",lat:50.7753,lng:6.0839},
+{n:"Boysen Memorial",d:"24 Jun",v:"Bislett Stadion, Oslo",c:"NOR",t:"bronze",w:"https://www.google.com/search?q=Boysen+Memorial+Oslo+2026+athletics",wt:"search",lat:59.9139,lng:10.7522},
+{n:"Meeting de Bordeaux",d:"24 Jun",v:"Stade de Stehelin, Bordeaux",c:"FRA",t:"challenger",w:"https://www.google.com/search?q=Meeting+de+Bordeaux+Bordeaux+2026+athletics",wt:"search",lat:44.8378,lng:-0.5792},
+{n:"TIPOS Atleticke Kriterium SNP",d:"24 Jun",v:"Stadion SNP, Banska Bystrica",c:"SVK",t:"bronze",w:"https://www.google.com/search?q=TIPOS+Atleticke+Kriterium+SNP+Banska+Bystrica+2026+athletics",wt:"search",lat:48.7395,lng:19.1535},
+{n:"Brnenska Latka Olympia",d:"25 Jun",v:"Nakupni centrum Olympia, Brno",c:"CZE",t:"silver",w:"https://www.google.com/search?q=Brnenska+Latka+Olympia+Brno+2026+athletics",wt:"search",lat:49.1951,lng:16.6068},
+{n:"Grand Slam Jerusalem",d:"25 Jun",v:"Givat Ram Stadium, Jerusalem",c:"ISR",t:"silver",w:"https://www.google.com/search?q=Grand+Slam+Jerusalem+Jerusalem+2026+athletics",wt:"search",lat:31.7683,lng:35.2137},
+{n:"76. Boris Hanzekovic Memorial",d:"26 Jun",v:"Sports Park Mladost, Zagreb",c:"CRO",t:"gold",w:"https://hanzek.hr/",wt:"official",lat:45.815,lng:15.9819},
+{n:"CTFL Finals",d:"26 Jun",v:"Terry Fox AF, Ottawa",c:"CAN",t:"challenger",w:"https://www.google.com/search?q=CTFL+Finals+Ottawa+2026+athletics",wt:"search",lat:45.4215,lng:-75.6972},
+{n:"Rotterdam Festival For Athletics",d:"26-27 Jun",v:"Sportcomplex Het Langepad, Rotterdam",c:"NED",t:"bronze",w:"https://www.google.com/search?q=Rotterdam+Festival+For+Athletics+Rotterdam+2026+athletics",wt:"search",lat:51.9244,lng:4.4777},
+{n:"30. Hofer Sparkassen Stabhochsprung",d:"27 Jun",v:"Altstadt, Hof",c:"GER",t:"challenger",w:"https://www.google.com/search?q=30.+Hofer+Sparkassen+Stabhochsprung+Hof+2026+athletics",wt:"search",lat:50.3133,lng:11.9128},
+{n:"Immobel International Athletics Meeting",d:"27 Jun",v:"Stade du Parc de la Dodaine, Nivelles",c:"BEL",t:"challenger",w:"https://www.google.com/search?q=Immobel+International+Athletics+Meeting+Nivelles+2026+athletics",wt:"search",lat:50.5983,lng:4.3275},
+{n:"Keihaskarnevaalit - Javelin carnival",d:"27 Jun",v:"Urheilukentta, Pihtipudas",c:"FIN",t:"challenger",w:"https://www.google.com/search?q=Keihaskarnevaalit+-+Javelin+carnival+Pihtipudas+2026+athletics",wt:"search",lat:63.3833,lng:25.5833},
+{n:"LA Throws Cup",d:"27 Jun",v:"Colich Throws Center, Wilmington, CA",c:"USA",t:"bronze",w:"https://www.google.com/search?q=LA+Throws+Cup+CA+2026+athletics",wt:"search",lat:33.7836,lng:-118.2612},
+{n:"Meeting International de Carquefou",d:"27 Jun",v:"Stade Du Moulin Boisseau, Carquefou",c:"FRA",t:"challenger",w:"https://www.google.com/search?q=Meeting+International+de+Carquefou+Carquefou+2026+athletics",wt:"search",lat:47.2997,lng:-1.4961},
+{n:"The Village Power Shot",d:"27 Jun",v:"Glody Dube Sports Academy, Modipane",c:"BOT",t:"challenger",w:"https://www.google.com/search?q=The+Village+Power+Shot+Modipane+2026+athletics",wt:"search",lat:-24.5167,lng:26.1333},
+{n:"Czeslaw Cybulski Memorial",d:"28 Jun",v:"Golecin Stadion, Poznan",c:"POL",t:"silver",w:"https://www.google.com/search?q=Czeslaw+Cybulski+Memorial+Poznan+2026+athletics",wt:"search",lat:52.4064,lng:16.9252},
+{n:"Korzo Jump",d:"28 Jun",v:"City square, Varazdin",c:"CRO",t:"challenger",w:"https://www.google.com/search?q=Korzo+Jump+Varazdin+2026+athletics",wt:"search",lat:46.3056,lng:16.3386},
+{n:"Meeting International Troyes Aube",d:"28 Jun",v:"Stade d'Athletisme, Troyes",c:"FRA",t:"bronze",w:"https://www.google.com/search?q=Meeting+International+Troyes+Aube+Troyes+2026+athletics",wt:"search",lat:48.2973,lng:4.0744},
+{n:"Piraeus Street Long Jump",d:"28 Jun",v:"Piraeus",c:"GRE",t:"silver",w:"https://www.google.com/search?q=Piraeus+Street+Long+Jump+Piraeus+2026+athletics",wt:"search",lat:37.942,lng:23.6467},
+{n:"La Classique d'athletisme de Montreal",d:"30 Jun",v:"Complexe Claude-Robillard, Montreal",c:"CAN",t:"bronze",w:"https://www.google.com/search?q=La+Classique+d%27athletisme+de+Montreal+Montreal+2026+athletics",wt:"search",lat:45.5017,lng:-73.5673},
+{n:"Fribourg International Meeting",d:"30 Jun-01 Jul",v:"Stade St-Leonard, Fribourg",c:"SUI",t:"challenger",w:"https://www.google.com/search?q=Fribourg+International+Meeting+Fribourg+2026+athletics",wt:"search",lat:46.8065,lng:7.1615},
+{n:"37. Miting Novo Mesto",d:"01 Jul",v:"Stadion Portoval, Novo Mesto",c:"SLO",t:"challenger",w:"https://www.google.com/search?q=37.+Miting+Novo+Mesto+Novo+Mesto+2026+athletics",wt:"search",lat:45.8039,lng:15.1691},
+{n:"Challenger Game Oulu",d:"01 Jul",v:"Raatin Stadion, Oulu",c:"FIN",t:"challenger",w:"https://www.google.com/search?q=Challenger+Game+Oulu+Oulu+2026+athletics",wt:"search",lat:65.0121,lng:25.4651},
+{n:"GP Castellon - Memorial Cansino",d:"01 Jul",v:"Gaeta Huguet, Castellon",c:"ESP",t:"challenger",w:"https://www.google.com/search?q=GP+Castellon+-+Memorial+Cansino+Castellon+2026+athletics",wt:"search",lat:39.9864,lng:-0.0513},
+{n:"Gran Prix Richard Boroto",d:"01 Jul",v:"Pista Jefferson Perez, Cuenca",c:"ECU",t:"challenger",w:"https://www.google.com/search?q=Gran+Prix+Richard+Boroto+Cuenca+2026+athletics",wt:"search",lat:-2.9006,lng:-79.0045},
+{n:"Perche des Alpes",d:"01 Jul",v:"Stade Asptt Grenoble, Montbonnot Saint Martin",c:"FRA",t:"silver",w:"https://www.google.com/search?q=Perche+des+Alpes+Montbonnot+Saint+Martin+2026+athletics",wt:"search",lat:45.2206,lng:5.7833},
+{n:"Raiffeisen Austrian Open Eisenstadt",d:"01 Jul",v:"Leichtathletikarena, Eisenstadt",c:"AUT",t:"silver",w:"https://www.google.com/search?q=Raiffeisen+Austrian+Open+Eisenstadt+Eisenstadt+2026+athletics",wt:"search",lat:47.8458,lng:16.5228},
+{n:"Swietelsky Grand Prix Tabor",d:"02 Jul",v:"Stadion Miru, Tabor",c:"CZE",t:"challenger",w:"https://www.google.com/search?q=Swietelsky+Grand+Prix+Tabor+Tabor+2026+athletics",wt:"search",lat:49.4144,lng:14.6578},
+{n:"Classique d'Athletisme de Quebec",d:"03 Jul",v:"PEPS de l'Universite Laval, Quebec City",c:"CAN",t:"challenger",w:"https://www.google.com/search?q=Classique+d%27Athletisme+de+Quebec+Quebec+City+2026+athletics",wt:"search",lat:46.8139,lng:-71.208},
+{n:"Meeting Stanislas Nancy",d:"03 Jul",v:"Stade Raymond Petit, Tomblaine",c:"FRA",t:"silver",w:"https://www.google.com/search?q=Meeting+Stanislas+Nancy+Tomblaine+2026+athletics",wt:"search",lat:48.6907,lng:6.2078},
+{n:"Continental Tour Alex Quinonez",d:"04 Jul",v:"Pista Jefferson Perez, Cuenca",c:"ECU",t:"bronze",w:"https://www.google.com/search?q=Continental+Tour+Alex+Quinonez+Cuenca+2026+athletics",wt:"search",lat:-2.9006,lng:-79.0045},
+{n:"Meeting Maia Cidade do Desporto",d:"04 Jul",v:"Estadio Jose Vieira de Carvalho, Maia",c:"POR",t:"bronze",w:"https://www.google.com/search?q=Meeting+Maia+Cidade+do+Desporto+Maia+2026+athletics",wt:"search",lat:41.2276,lng:-8.6203},
+{n:"Meeting National Est Lyonnais",d:"04 Jul",v:"Stade Raymond Troussier, Decines",c:"FRA",t:"challenger",w:"https://www.google.com/search?q=Meeting+National+Est+Lyonnais+Decines+2026+athletics",wt:"search",lat:45.7667,lng:4.9583},
+{n:"Meeting voor Mon - Polsstokgala",d:"04 Jul",v:"AtletiekArena, Leuven",c:"BEL",t:"challenger",w:"https://www.google.com/search?q=Meeting+voor+Mon+-+Polsstokgala+Leuven+2026+athletics",wt:"search",lat:50.8798,lng:4.7005},
+{n:"X Ordizia Meeting",d:"04 Jul",v:"Altamira estadioa, Ordizia",c:"ESP",t:"bronze",w:"https://www.google.com/search?q=X+Ordizia+Meeting+Ordizia+2026+athletics",wt:"search",lat:43.0333,lng:-2.1833},
+{n:"Meeting International Bouvet-Bionda",d:"04-05 Jul",v:"Stade de Vongy, Thonon-les-Bains",c:"FRA",t:"challenger",w:"https://www.google.com/search?q=Meeting+International+Bouvet-Bionda+Thonon-les-Bains+2026+athletics",wt:"search",lat:46.37,lng:6.4793},
+{n:"Fly Athens",d:"05 Jul",v:"Panathinaikou Stadiou, Athina",c:"GRE",t:"silver",w:"https://www.google.com/search?q=Fly+Athens+Athina+2026+athletics",wt:"search",lat:37.9838,lng:23.7275},
+{n:"Fuse Sprint",d:"05 Jul",v:"Athletic Stadium, Tottori",c:"JPN",t:"bronze",w:"https://www.google.com/search?q=Fuse+Sprint+Tottori+2026+athletics",wt:"search",lat:35.5011,lng:134.2351},
+{n:"Opolski Festiwal Skokow",d:"05 Jul",v:"Miejski Stadion, Opole",c:"POL",t:"silver",w:"https://www.google.com/search?q=Opolski+Festiwal+Skokow+Opole+2026+athletics",wt:"search",lat:50.6751,lng:17.9213},
+{n:"Miting Ciutat de Barcelona",d:"07 Jul",v:"Estadi Joan Serrahima, Barcelona",c:"ESP",t:"challenger",w:"https://www.google.com/search?q=Miting+Ciutat+de+Barcelona+Barcelona+2026+athletics",wt:"search",lat:41.3851,lng:2.1734},
+{n:"Cork City Sports",d:"08 Jul",v:"Munster Technological University, Cork",c:"IRL",t:"bronze",w:"https://www.google.com/search?q=Cork+City+Sports+Cork+2026+athletics",wt:"search",lat:51.8985,lng:-8.4756},
+{n:"Folksam Grand Prix Karlstad",d:"08 Jul",v:"Sola Arena, Karlstad",c:"SWE",t:"bronze",w:"https://www.google.com/search?q=Folksam+Grand+Prix+Karlstad+Karlstad+2026+athletics",wt:"search",lat:59.3793,lng:13.5036},
+{n:"Joensuu Motonet GP",d:"08 Jul",v:"Keskusurheilukentta, Joensuu",c:"FIN",t:"bronze",w:"https://www.google.com/search?q=Joensuu+Motonet+GP+Joensuu+2026+athletics",wt:"search",lat:62.601,lng:29.7636},
+{n:"Meeting Lignano",d:"08 Jul",v:"Stadio G. Teghil, Lignano Sabbiadoro",c:"ITA",t:"bronze",w:"https://www.google.com/search?q=Meeting+Lignano+Lignano+Sabbiadoro+2026+athletics",wt:"search",lat:45.6781,lng:13.1219},
+{n:"Lisek Sniezka Pole Vault Challenge",d:"10 Jul",v:"Stadium Irena Szewinska, Karpacz",c:"POL",t:"challenger",w:"https://www.google.com/search?q=Lisek+Sniezka+Pole+Vault+Challenge+Karpacz+2026+athletics",wt:"search",lat:50.7789,lng:15.7367},
+{n:"Morton Games",d:"10 Jul",v:"Morton Stadium, Santry, Dublin",c:"IRL",t:"bronze",w:"https://www.google.com/search?q=Morton+Games+Dublin+2026+athletics",wt:"search",lat:53.3498,lng:-6.2603},
+{n:"PUMA Fast Arms Fast Legs",d:"10 Jul",v:"Enwag-Stadion, Wetzlar",c:"GER",t:"challenger",w:"https://www.google.com/search?q=PUMA+Fast+Arms+Fast+Legs+Wetzlar+2026+athletics",wt:"search",lat:50.5639,lng:8.5003},
+{n:"Ed Murphey Classic",d:"10-11 Jul",v:"Billy J. Murphy Complex, Memphis, TN",c:"USA",t:"silver",w:"https://www.google.com/search?q=Ed+Murphey+Classic+TN+2026+athletics",wt:"search",lat:35.1495,lng:-90.049},
+{n:"The Elliott Denman N.J. International",d:"10-11 Jul",v:"Monmouth University, West Long Branch, NJ",c:"USA",t:"challenger",w:"https://www.google.com/search?q=The+Elliott+Denman+N.J.+International+NJ+2026+athletics",wt:"search",lat:40.2862,lng:-74.0071},
+{n:"48th Grand Prix Nove Mesto nad Metuji",d:"11 Jul",v:"General Klapalek stadium, Nove Mesto nad Metuji",c:"CZE",t:"bronze",w:"https://www.google.com/search?q=48th+Grand+Prix+Nove+Mesto+nad+Metuji+Nove+Mesto+nad+Metuji+2026+athletics",wt:"search",lat:50.3447,lng:16.15},
+{n:"81. Cezmi Or Cup",d:"11 Jul",v:"ENKA Atletizm Pisti, Istanbul",c:"TUR",t:"challenger",w:"https://www.google.com/search?q=81.+Cezmi+Or+Cup+Istanbul+2026+athletics",wt:"search",lat:41.0082,lng:28.9784},
+{n:"Aleksander Lohu Memorial",d:"11 Jul",v:"Kalevi Keskstaadion, Tallinn",c:"EST",t:"challenger",w:"https://www.google.com/search?q=Aleksander+Lohu+Memorial+Tallinn+2026+athletics",wt:"search",lat:59.437,lng:24.7536},
+{n:"British Milers Club Grand Prix",d:"11 Jul",v:"Woodside Stadium, Watford",c:"GBR",t:"challenger",w:"https://www.google.com/search?q=British+Milers+Club+Grand+Prix+Watford+2026+athletics",wt:"search",lat:51.6565,lng:-0.3903},
+{n:"Meeting of Braga",d:"11 Jul",v:"Estadio 1o de Maio, Braga",c:"POR",t:"bronze",w:"https://www.google.com/search?q=Meeting+of+Braga+Braga+2026+athletics",wt:"search",lat:41.5454,lng:-8.4265},
+{n:"Moore-Guldensporenmeeting",d:"11 Jul",v:"Sportcentrum Wembley, Kortrijk",c:"BEL",t:"bronze",w:"https://www.google.com/search?q=Moore-Guldensporenmeeting+Kortrijk+2026+athletics",wt:"search",lat:50.8279,lng:3.2649},
+{n:"Sunset Tour",d:"11 Jul",v:"Occidental College, Los Angeles, CA",c:"USA",t:"silver",w:"https://www.google.com/search?q=Sunset+Tour+CA+2026+athletics",wt:"search",lat:34.0522,lng:-118.2437},
+{n:"Vulcan Vault",d:"11 Jul",v:"Pelham Civic Center, Pelham, AL",c:"USA",t:"challenger",w:"https://www.google.com/search?q=Vulcan+Vault+AL+2026+athletics",wt:"search",lat:33.2856,lng:-86.8098},
+{n:"World Jump Day",d:"11 Jul",v:"TRANSDANUBIA Athletik Zentrum, Linz",c:"AUT",t:"challenger",w:"https://www.google.com/search?q=World+Jump+Day+Linz+2026+athletics",wt:"search",lat:48.3069,lng:14.2858},
+{n:"Edmonton Athletics Invitational",d:"12 Jul",v:"Foote Field, Edmonton",c:"CAN",t:"silver",w:"https://www.google.com/search?q=Edmonton+Athletics+Invitational+Edmonton+2026+athletics",wt:"search",lat:53.5461,lng:-113.4938},
+{n:"Klaverblad International High Jump",d:"12 Jul",v:"ARV Ilion, Zoetermeer",c:"NED",t:"challenger",w:"https://www.google.com/search?q=Klaverblad+International+High+Jump+Zoetermeer+2026+athletics",wt:"search",lat:52.0607,lng:4.494},
+{n:"MAIF Hoppet",d:"12 Jul",v:"Idrottsplats Hogelid, Mariestad",c:"SWE",t:"challenger",w:"https://www.google.com/search?q=MAIF+Hoppet+Mariestad+2026+athletics",wt:"search",lat:58.7091,lng:13.8236},
+{n:"Stumptown Twilight",d:"12 Jul",v:"Lincoln HS, Portland, OR",c:"USA",t:"challenger",w:"https://www.google.com/search?q=Stumptown+Twilight+OR+2026+athletics",wt:"search",lat:45.5152,lng:-122.6784},
+{n:"Tampere Meeting",d:"12 Jul",v:"Ratinan Stadion, Tampere",c:"FIN",t:"bronze",w:"https://www.google.com/search?q=Tampere+Meeting+Tampere+2026+athletics",wt:"search",lat:61.4978,lng:23.761},
+{n:"Gyulai Istvan Memorial",d:"14 Jul",v:"Nemzeti Atletikai Kozpont, Budapest",c:"HUN",t:"gold",w:"https://gyulaiemlekverseny.hu/",wt:"official",lat:47.4979,lng:19.0402},
+{n:"Harry Jerome Track Classic",d:"14 Jul",v:"Swangard Stadium, Burnaby",c:"CAN",t:"bronze",w:"https://www.google.com/search?q=Harry+Jerome+Track+Classic+Burnaby+2026+athletics",wt:"search",lat:49.2488,lng:-122.9805},
+{n:"Athletics Meeting Kostas Spanidis",d:"15 Jul",v:"Kaftanzoglio Stadium, Thessaloniki",c:"GRE",t:"challenger",w:"https://www.google.com/search?q=Athletics+Meeting+Kostas+Spanidis+Thessaloniki+2026+athletics",wt:"search",lat:40.6401,lng:22.9444},
+{n:"Meeting International d'Athletisme de Liege",d:"15 Jul",v:"Province Naimette Arena, Liege",c:"BEL",t:"bronze",w:"https://www.google.com/search?q=Meeting+International+d%27Athletisme+de+Liege+Liege+2026+athletics",wt:"search",lat:50.6326,lng:5.5797},
+{n:"37 Meeting Arcobaleno",d:"16 Jul",v:"Centro Sportivo G. Olmo, Celle Ligure",c:"ITA",t:"challenger",w:"https://www.google.com/search?q=37+Meeting+Arcobaleno+Celle+Ligure+2026+athletics",wt:"search",lat:44.3439,lng:8.545},
+{n:"Meeting Madrid 2026",d:"16 Jul",v:"Estadio Vallehermoso, Madrid",c:"ESP",t:"silver",w:"https://www.google.com/search?q=Meeting+Madrid+2026+Madrid+2026+athletics",wt:"search",lat:40.4168,lng:-3.7038},
+{n:"Nordic High Jump Challenge",d:"16 Jul",v:"Fana Stadion, Bergen",c:"NOR",t:"challenger",w:"https://www.google.com/search?q=Nordic+High+Jump+Challenge+Bergen+2026+athletics",wt:"search",lat:60.3913,lng:5.3221},
+{n:"Spitzen Leichtathletik Luzern",d:"16 Jul",v:"Stadion Allmend, Luzern",c:"SUI",t:"silver",w:"https://www.google.com/search?q=Spitzen+Leichtathletik+Luzern+Luzern+2026+athletics",wt:"search",lat:47.0502,lng:8.3093},
+{n:"Dauphin Street Vault",d:"18 Jul",v:"Dauphin Street, Mobile, AL",c:"USA",t:"challenger",w:"https://www.google.com/search?q=Dauphin+Street+Vault+AL+2026+athletics",wt:"search",lat:30.6954,lng:-88.0399},
+{n:"Lappeenranta Games",d:"18 Jul",v:"Kimpisen yleisurheilukentta, Lappeenranta",c:"FIN",t:"challenger",w:"https://www.google.com/search?q=Lappeenranta+Games+Lappeenranta+2026+athletics",wt:"search",lat:61.0587,lng:28.1887},
+{n:"Night of Athletics",d:"18 Jul",v:"Stadion De Veen, Heusden-Zolder",c:"BEL",t:"bronze",w:"https://www.google.com/search?q=Night+of+Athletics+Heusden-Zolder+2026+athletics",wt:"search",lat:51.0333,lng:5.3},
+{n:"TIPOS P-T-S Meeting",d:"21 Jul",v:"Stadion SNP, Banska Bystrica",c:"SVK",t:"silver",w:"https://www.google.com/search?q=TIPOS+P-T-S+Meeting+Banska+Bystrica+2026+athletics",wt:"search",lat:48.7395,lng:19.1535},
+{n:"WACT Silver Hammer Throw",d:"23 Jul",v:"Sugar uti Atletikai Centrum, Szombathely",c:"HUN",t:"silver",w:"https://www.google.com/search?q=WACT+Silver+Hammer+Throw+Szombathely+2026+athletics",wt:"search",lat:47.2307,lng:16.6218},
+{n:"IFAM Oordegem",d:"01 Aug",v:"Putbosstadion, Oordegem",c:"BEL",t:"bronze",w:"https://www.google.com/search?q=IFAM+Oordegem+Oordegem+2026+athletics",wt:"search",lat:50.9833,lng:3.8833},
+{n:"Monaco Athletics Festival",d:"05 Aug",v:"Quai Albert 1er, Monaco",c:"MON",t:"silver",w:"https://www.google.com/search?q=Monaco+Athletics+Festival+Monaco+2026+athletics",wt:"search",lat:43.7384,lng:7.4246},
+{n:"Sir Walter Miler",d:"07 Aug",v:"Meredith College, Raleigh, NC",c:"USA",t:"challenger",w:"https://www.google.com/search?q=Sir+Walter+Miler+NC+2026+athletics",wt:"search",lat:35.7796,lng:-78.6382},
+{n:"British Milers Club Grand Prix",d:"08 Aug",v:"Mo Farah Athletics Track, Twickenham",c:"GBR",t:"challenger",w:"https://www.google.com/search?q=British+Milers+Club+Grand+Prix+Twickenham+2026+athletics",wt:"search",lat:51.4461,lng:-0.3315},
+{n:"Golden Sand",d:"17 Aug",v:"Promenada Gwiazd, Miedzyzdroje",c:"POL",t:"silver",w:"https://www.google.com/search?q=Golden+Sand+Miedzyzdroje+2026+athletics",wt:"search",lat:53.9261,lng:14.4461},
+{n:"Atleticky Mitink Rieter",d:"19 Aug",v:"Atleticky stadion, Usti nad Orlici",c:"CZE",t:"challenger",w:"https://www.google.com/search?q=Atleticky+Mitink+Rieter+Usti+nad+Orlici+2026+athletics",wt:"search",lat:49.9739,lng:16.3975},
+{n:"Espoo Motonet GP",d:"19 Aug",v:"Leppavaaran Stadion, Espoo",c:"FIN",t:"bronze",w:"https://www.google.com/search?q=Espoo+Motonet+GP+Espoo+2026+athletics",wt:"search",lat:60.2055,lng:24.6559},
+{n:"Tyczka na Molo",d:"20 Aug",v:"Skwer Kuracyjny, Sopot",c:"POL",t:"challenger",w:"https://www.google.com/search?q=Tyczka+na+Molo+Sopot+2026+athletics",wt:"search",lat:54.4418,lng:18.5601},
+{n:"Felix Sanchez Classic",d:"22 Aug",v:"Pista Felix Sanchez, Santo Domingo",c:"DOM",t:"silver",w:"https://www.google.com/search?q=Felix+Sanchez+Classic+Santo+Domingo+2026+athletics",wt:"search",lat:18.4861,lng:-69.9312},
+{n:"WACT Silver Level Meeting",d:"22 Aug",v:"Kalinga Stadium, Bhubaneshwar",c:"IND",t:"silver",w:"https://www.google.com/search?q=WACT+Silver+Level+Meeting+Bhubaneshwar+2026+athletics",wt:"search",lat:20.2961,lng:85.8245},
+{n:"Folksam Grand Prix Goteborg",d:"24 Aug",v:"Slottsskogsvallen, Goteborg",c:"SWE",t:"bronze",w:"https://www.google.com/search?q=Folksam+Grand+Prix+Goteborg+Goteborg+2026+athletics",wt:"search",lat:57.7089,lng:11.9746},
+{n:"9. Wieslaw Maniak Memorial",d:"26 Aug",v:"Wieslaw Maniak Stadium, Szczecin",c:"POL",t:"bronze",w:"https://www.google.com/search?q=9.+Wieslaw+Maniak+Memorial+Szczecin+2026+athletics",wt:"search",lat:53.4285,lng:14.5528},
+{n:"Natanya Festival",d:"26-27 Aug",v:"Geayt Feldman Park, Netanya",c:"ISR",t:"challenger",w:"https://www.google.com/search?q=Natanya+Festival+Netanya+2026+athletics",wt:"search",lat:32.3215,lng:34.8532},
+{n:"Speerwerpersfestival",d:"29 Aug",v:"Gerard Bontinckstadion, Sint-Niklaas",c:"BEL",t:"challenger",w:"https://www.google.com/search?q=Speerwerpersfestival+Sint-Niklaas+2026+athletics",wt:"search",lat:51.165,lng:4.1435},
+{n:"Internationales Hochsprungmeeting Heilbronn",d:"29-30 Aug",v:"Marktplatz, Heilbronn",c:"GER",t:"silver",w:"https://www.google.com/search?q=Internationales+Hochsprungmeeting+Heilbronn+Heilbronn+2026+athletics",wt:"search",lat:49.1427,lng:9.2109},
+{n:"26th Pole Vault Meeting for Women",d:"30 Aug",v:"Jahnstadion, Beckum",c:"GER",t:"challenger",w:"https://www.google.com/search?q=26th+Pole+Vault+Meeting+for+Women+Beckum+2026+athletics",wt:"search",lat:51.7567,lng:8.0414},
+{n:"Gala dei Castelli",d:"30 Aug",v:"Stadio Comunale, Bellinzona",c:"SUI",t:"silver",w:"https://www.google.com/search?q=Gala+dei+Castelli+Bellinzona+2026+athletics",wt:"search",lat:46.1944,lng:9.0175},
+{n:"Grand Prix Brescia",d:"30 Aug",v:"Centro Gabre Gabric, Brescia",c:"ITA",t:"silver",w:"https://www.google.com/search?q=Grand+Prix+Brescia+Brescia+2026+athletics",wt:"search",lat:45.5416,lng:10.2118},
+{n:"ISTAF 2026",d:"30 Aug",v:"Olympiastadion, Berlin",c:"GER",t:"silver",w:"https://www.google.com/search?q=ISTAF+2026+Berlin+2026+athletics",wt:"search",lat:52.52,lng:13.405},
+{n:"Lisek i Przyjaciele Szczecin",d:"30 Aug",v:"Plac Jasne Blonia, Szczecin",c:"POL",t:"challenger",w:"https://www.google.com/search?q=Lisek+i+Przyjaciele+Szczecin+Szczecin+2026+athletics",wt:"search",lat:53.4285,lng:14.5528},
+{n:"Memorial Ludwichowskiego",d:"30 Aug",v:"Uniwersytetu Warminsko-Mazurskiego, Olsztyn",c:"POL",t:"bronze",w:"https://www.google.com/search?q=Memorial+Ludwichowskiego+Olsztyn+2026+athletics",wt:"search",lat:53.7784,lng:20.4801},
+{n:"Serbia Athletics Meeting",d:"02 Sep",v:"Athletics Stadium, Beograd",c:"SRB",t:"bronze",w:"https://www.google.com/search?q=Serbia+Athletics+Meeting+Beograd+2026+athletics",wt:"search",lat:44.7866,lng:20.4489},
+{n:"Velka cena Chebu",d:"03 Sep",v:"Stadion v Poohri, Cheb",c:"CZE",t:"challenger",w:"https://www.google.com/search?q=Velka+cena+Chebu+Cheb+2026+athletics",wt:"search",lat:50.0796,lng:12.3735},
+{n:"The Monument Mile Classic",d:"05 Sep",v:"University of Stirling, Stirling",c:"GBR",t:"challenger",w:"https://www.google.com/search?q=The+Monument+Mile+Classic+Stirling+2026+athletics",wt:"search",lat:56.1165,lng:-3.9369},
+{n:"62 Palio Citta della Quercia",d:"08 Sep",v:"Stadio Quercia, Rovereto",c:"ITA",t:"silver",w:"https://www.google.com/search?q=62+Palio+Citta+della+Quercia+Rovereto+2026+athletics",wt:"search",lat:45.8906,lng:11.0389},
+{n:"Dinamo Zrinjevac Meeting",d:"08 Sep",v:"Sports Park Mladost, Zagreb",c:"CRO",t:"challenger",w:"https://www.google.com/search?q=Dinamo+Zrinjevac+Meeting+Zagreb+2026+athletics",wt:"search",lat:45.815,lng:15.9819},
+{n:"72. ORLEN Kusocinski Memorial",d:"18 Sep",v:"Stadion Slaski, Chorzow",c:"POL",t:"silver",w:"https://www.google.com/search?q=72.+ORLEN+Kusocinski+Memorial+Chorzow+2026+athletics",wt:"search",lat:50.2968,lng:18.954},
+{n:"Romanian Pole Vault Gala",d:"26 Sep",v:"Constitutiei Square, Bucuresti",c:"ROU",t:"challenger",w:"https://www.google.com/search?q=Romanian+Pole+Vault+Gala+Bucuresti+2026+athletics",wt:"search",lat:44.4268,lng:26.1025},
+{n:"Grand Prix del Paraguay",d:"31 Oct-01 Nov",v:"Pista De Atletismo, Luque, Asuncion",c:"PAR",t:"challenger",w:"https://www.google.com/search?q=Grand+Prix+del+Paraguay+Asuncion+2026+athletics",wt:"search",lat:-25.2637,lng:-57.5759},
+{n:"Jetour Doha Meeting",d:"08 May",v:"Suhaim Bin Hamad Stadium, Doha",c:"QAT",t:"diamond",w:"https://doha.diamondleague.com/",wt:"official",lat:25.2854,lng:51.531},
+{n:"Shanghai/Keqiao Diamond League",d:"16 May",v:"Keqiao Sports Centre, Shanghai",c:"CHN",t:"diamond",w:"https://shanghai.diamondleague.com/",wt:"official",lat:31.2304,lng:121.4737},
+{n:"Xiamen Diamond League",d:"23 May",v:"Egret Stadium, Xiamen",c:"CHN",t:"diamond",w:"https://xiamen.diamondleague.com/",wt:"official",lat:24.4798,lng:118.0894},
+{n:"Meeting International Mohammed VI",d:"31 May",v:"Prince Moulay Abdellah Stadium, Rabat",c:"MAR",t:"diamond",w:"https://rabat.diamondleague.com/",wt:"official",lat:34.0209,lng:-6.8416},
+{n:"Golden Gala Pietro Mennea",d:"04 Jun",v:"Stadio Olimpico, Rome",c:"ITA",t:"diamond",w:"https://rome.diamondleague.com/",wt:"official",lat:41.9028,lng:12.4964},
+{n:"BAUHAUS-galan",d:"07 Jun",v:"Stockholms Olympiastadion, Stockholm",c:"SWE",t:"diamond",w:"https://stockholm.diamondleague.com/",wt:"official",lat:59.3293,lng:18.0686},
+{n:"Bislett Games",d:"10 Jun",v:"Bislett Stadion, Oslo",c:"NOR",t:"diamond",w:"https://oslo.diamondleague.com/",wt:"official",lat:59.9139,lng:10.7522},
+{n:"Meeting de Paris",d:"26 Jun",v:"Stade Charl\u00e9ty, Paris",c:"FRA",t:"diamond",w:"https://paris.diamondleague.com/",wt:"official",lat:48.8566,lng:2.3522},
+{n:"Prefontaine Classic",d:"04 Jul",v:"Hayward Field, Eugene",c:"USA",t:"diamond",w:"https://eugene.diamondleague.com/",wt:"official",lat:44.0521,lng:-123.0868},
+{n:"Herculis EBS",d:"10 Jul",v:"Stade Louis II, Monaco",c:"MON",t:"diamond",w:"https://monaco.diamondleague.com/",wt:"official",lat:43.7384,lng:7.4246},
+{n:"London Athletics Meet",d:"18 Jul",v:"London Stadium, London",c:"GBR",t:"diamond",w:"https://london.diamondleague.com/",wt:"official",lat:51.5074,lng:-0.1278},
+{n:"Athletissima",d:"21 Aug",v:"Stade Olympique de la Pontaise, Lausanne",c:"SUI",t:"diamond",w:"https://lausanne.diamondleague.com/",wt:"official",lat:46.5197,lng:6.6323},
+{n:"Memorial Kamili Skolimowskiej",d:"23 Aug",v:"Stadion \u015al\u0105ski, Silesia/Chorz\u00f3w",c:"POL",t:"diamond",w:"https://silesia.diamondleague.com/",wt:"official",lat:50.2968,lng:18.954},
+{n:"Weltklasse Z\u00fcrich",d:"27 Aug",v:"Letzigrund, Zurich",c:"SUI",t:"diamond",w:"https://zurich.diamondleague.com/",wt:"official",lat:47.3769,lng:8.5417},
+{n:"Memorial Van Damme (Final)",d:"04\u201305 Sep",v:"Stade Roi Baudouin, Brussels",c:"BEL",t:"diamond",w:"https://brussels.diamondleague.com/",wt:"official",lat:50.8503,lng:4.3517}
+];
+
+const continents = {"Europe": ["GBR", "FRA", "GER", "ITA", "ESP", "POR", "NED", "BEL", "SUI", "AUT", "SWE", "NOR", "FIN", "DEN", "CZE", "POL", "SVK", "HUN", "SLO", "CRO", "SRB", "ROU", "GRE", "CYP", "MLT", "LTU", "EST", "IRL", "MON", "TUR"], "Asia": ["JPN", "CHN", "KOR", "TPE", "IND", "UAE", "KSA", "OMA", "ISR", "QAT"], "Africa": ["EGY", "KEN", "RSA", "BOT", "NGR", "NAM", "LES", "DJI", "CMR", "ETH", "MAR"], "North America": ["USA", "CAN", "JAM", "PUR", "DOM"], "South America": ["ARG", "URU", "CHI", "ECU", "PAR"], "Oceania": ["NZL", "AUS"]};
+const countryNames = {"NZL": "New Zealand", "AUS": "Australia", "USA": "United States", "CAN": "Canada", "GBR": "United Kingdom", "FRA": "France", "GER": "Germany", "ITA": "Italy", "ESP": "Spain", "POR": "Portugal", "NED": "Netherlands", "BEL": "Belgium", "SUI": "Switzerland", "AUT": "Austria", "SWE": "Sweden", "NOR": "Norway", "FIN": "Finland", "DEN": "Denmark", "CZE": "Czechia", "POL": "Poland", "SVK": "Slovakia", "HUN": "Hungary", "SLO": "Slovenia", "CRO": "Croatia", "SRB": "Serbia", "ROU": "Romania", "GRE": "Greece", "CYP": "Cyprus", "MLT": "Malta", "LTU": "Lithuania", "EST": "Estonia", "IRL": "Ireland", "MON": "Monaco", "TUR": "T\u00fcrkiye", "JPN": "Japan", "CHN": "China", "KOR": "South Korea", "TPE": "Chinese Taipei", "IND": "India", "UAE": "UAE", "KSA": "Saudi Arabia", "OMA": "Oman", "ISR": "Israel", "QAT": "Qatar", "EGY": "Egypt", "KEN": "Kenya", "RSA": "South Africa", "BOT": "Botswana", "NGR": "Nigeria", "NAM": "Namibia", "LES": "Lesotho", "DJI": "Djibouti", "CMR": "Cameroon", "ETH": "Ethiopia", "MAR": "Morocco", "JAM": "Jamaica", "PUR": "Puerto Rico", "DOM": "Dominican Republic", "ARG": "Argentina", "URU": "Uruguay", "CHI": "Chile", "ECU": "Ecuador", "PAR": "Paraguay"};
+const countryToContinent = {};
+Object.keys(continents).forEach(cont => continents[cont].forEach(c => countryToContinent[c] = cont));
+
+const colors = { diamond: "#22d3ee", gold: "#fbbf24", silver: "#e2e8f0", bronze: "#b45309", challenger: "#64748b" };
+const tierOrder = { diamond: -1, gold: 0, silver: 1, bronze: 2, challenger: 3 };
+const monthNames = {1:"January",2:"February",3:"March",4:"April",5:"May",6:"June",7:"July",8:"August",9:"September",10:"October",11:"November",12:"December"};
+const monthOrder = {"Jan":1,"Feb":2,"Mar":3,"Apr":4,"May":5,"Jun":6,"Jul":7,"Aug":8,"Sep":9,"Oct":10,"Nov":11,"Dec":12};
+
+// ==== HELPERS ====
+function slugify(name) {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+}
+
+const monthNums = {Jan:1,Feb:2,Mar:3,Apr:4,May:5,Jun:6,Jul:7,Aug:8,Sep:9,Oct:10,Nov:11,Dec:12};
+function parseMeetingDate(dateStr) {
+  // "31 Oct-01 Nov" cross-month
+  const cross = dateStr.match(/^(\d+)\s+(\w+)-(\d+)\s+(\w+)$/);
+  if (cross) return {
+    start: new Date(2026, monthNums[cross[2]]-1, +cross[1]),
+    end:   new Date(2026, monthNums[cross[4]]-1, +cross[3])
+  };
+  // "01-04 Apr" same-month range
+  const range = dateStr.match(/^(\d+)-(\d+)\s+(\w+)$/);
+  if (range) { const mo = monthNums[range[3]]-1; return { start: new Date(2026,mo,+range[1]), end: new Date(2026,mo,+range[2]) }; }
+  // "17 Jan" single day
+  const single = dateStr.match(/^(\d+)\s+(\w+)$/);
+  if (single) { const d = new Date(2026, monthNums[single[2]]-1, +single[1]); return {start:d, end:d}; }
+  return {start: new Date(2026,0,1), end: new Date(2026,0,1)};
+}
+
+function formatICSDate(d) {
+  return `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
+}
+
+const meetingsMap = {};
+meetings.forEach(m => { meetingsMap[slugify(m.n)] = m; });
+
+function downloadICS(slug) {
+  const m = meetingsMap[slug]; if (!m) return;
+  const {start, end} = parseMeetingDate(m.d);
+  const endExcl = new Date(end.getTime() + 86400000);
+  const ics = [
+    'BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//World Athletics 2026//EN',
+    'BEGIN:VEVENT',
+    `UID:${slug}@worldathletics2026`,
+    `DTSTART;VALUE=DATE:${formatICSDate(start)}`,
+    `DTEND;VALUE=DATE:${formatICSDate(endExcl)}`,
+    `SUMMARY:${m.n}`,
+    `LOCATION:${m.v}`,
+    `URL:${m.w}`,
+    'END:VEVENT','END:VCALENDAR'
+  ].join('\r\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([ics], {type:'text/calendar'}));
+  a.download = slug + '.ics'; a.click(); URL.revokeObjectURL(a.href);
+}
+
+const activeTiers = new Set(['diamond','gold','silver','bronze','challenger']);
+let activeContinent = "";
+let activeCountry = "";
+let searchQuery = "";
+let upcomingOnly = false;
+const activeMonths = new Set(); // empty = all months
+
+// ==== DROPDOWNS ====
+const continentSel = document.getElementById('continentFilter');
+const countrySel = document.getElementById('countryFilter');
+const usedCountries = new Set(meetings.map(m => m.c));
+const usedContinents = new Set();
+usedCountries.forEach(c => { if (countryToContinent[c]) usedContinents.add(countryToContinent[c]); });
+
+Object.keys(continents).filter(c => usedContinents.has(c)).sort().forEach(cont => {
+  const opt = document.createElement('option');
+  opt.value = cont; opt.textContent = cont;
+  continentSel.appendChild(opt);
+});
+
+function rebuildCountryDropdown() {
+  const currentCountry = countrySel.value;
+  countrySel.innerHTML = '<option value="">All countries</option>';
+  let countriesToShow = [...usedCountries];
+  if (activeContinent) countriesToShow = countriesToShow.filter(c => countryToContinent[c] === activeContinent);
+  countriesToShow.sort((a,b) => (countryNames[a]||a).localeCompare(countryNames[b]||b));
+  countriesToShow.forEach(code => {
+    const opt = document.createElement('option');
+    opt.value = code; opt.textContent = countryNames[code] || code;
+    countrySel.appendChild(opt);
+  });
+  if (countriesToShow.includes(currentCountry)) countrySel.value = currentCountry;
+  else { countrySel.value = ""; activeCountry = ""; }
+}
+rebuildCountryDropdown();
+
+// ==== FILTER ====
+function passesFilter(m) {
+  if (!activeTiers.has(m.t)) return false;
+  if (activeContinent && countryToContinent[m.c] !== activeContinent) return false;
+  if (activeCountry && m.c !== activeCountry) return false;
+  if (searchQuery) {
+    const q = searchQuery.toLowerCase();
+    const hay = ((m.n||'') + ' ' + (m.v||'') + ' ' + (countryNames[m.c]||m.c||'')).toLowerCase();
+    if (!hay.includes(q)) return false;
+  }
+  if (upcomingOnly) {
+    const today = new Date(); today.setHours(0,0,0,0);
+    if (m.d && parseMeetingDate(m.d).end < today) return false;
+  }
+  if (activeMonths.size > 0 && !activeMonths.has(getMonthFromDate(m.d))) return false;
+  return true;
+}
+
+// ==== AFFILIATE ====
+const affiliate = {
+  tickets: (meetingName, city) => `https://www.google.com/search?q=${encodeURIComponent(meetingName + " " + city + " tickets 2026")}`,
+  flights: (city) => `https://www.google.com/flights?q=${encodeURIComponent("flights to " + city)}`,
+  hotels: (city) => `https://www.booking.com/searchresults.html?ss=${encodeURIComponent(city)}`
+};
+
+// ==== MAP ====
+const map = L.map('map', { worldCopyJump: true, minZoom: 2, zoomControl: true }).setView([30, 15], 2);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { attribution: '&copy; OpenStreetMap &copy; CARTO', maxZoom: 19 }).addTo(map);
+
+const clusterGroup = L.markerClusterGroup({
+  maxClusterRadius: 35,
+  spiderfyOnMaxZoom: true,
+  showCoverageOnHover: false,
+  chunkedLoading: true
+});
+map.addLayer(clusterGroup);
+
+const allMarkers = [];
+const mapMeetings = [...meetings].sort((a,b) => tierOrder[b.t] - tierOrder[a.t]);
+const tierCounts = { diamond:0, gold:0, silver:0, bronze:0, challenger:0 };
+
+mapMeetings.forEach(m => {
+  tierCounts[m.t]++;
+  const radius = m.t === 'diamond' ? 10 : m.t === 'gold' ? 8 : m.t === 'silver' ? 6 : 5;
+  const marker = L.circleMarker([m.lat, m.lng], {
+    radius: radius, fillColor: colors[m.t], color: '#fff',
+    weight: 1.5, opacity: 1, fillOpacity: 0.92
+  });
+  const city = (m.v.split(",").pop() || m.v).trim();
+  const linkLabel = m.wt === 'official' ? 'Official website' : 'Search online';
+  const linkIcon = m.wt === 'official' ? '🔗' : '🔍';
+  const titleClass = m.t === 'diamond' ? 'popup-title diamond' : 'popup-title';
+  const tierLabel = m.t === 'diamond' ? 'Diamond League' : m.t;
+  const mSlug = slugify(m.n);
+  marker.bindPopup(`
+    <div class="${titleClass}">${m.n}</div>
+    <div class="popup-meta"><span class="emoji">📅</span> ${m.d} 2026</div>
+    <div class="popup-meta"><span class="emoji">📍</span> ${m.v}</div>
+    <div class="popup-meta"><span class="emoji">🌍</span> ${countryNames[m.c] || m.c}</div>
+    <div class="popup-meta"><span class="emoji">${linkIcon}</span> <a href="${m.w}" target="_blank" rel="noopener">${linkLabel}</a></div>
+    <div class="popup-affiliate">
+      <a href="${affiliate.tickets(m.n, city)}" target="_blank" rel="noopener sponsored">🎟 Tickets</a>
+      <a href="${affiliate.flights(city)}" target="_blank" rel="noopener sponsored">✈️ Flights</a>
+      <a href="${affiliate.hotels(city)}" target="_blank" rel="noopener sponsored">🏨 Hotels</a>
+      <button class="popup-ics-btn" onclick="downloadICS('${mSlug}')">📅 Add to cal</button>
+    </div>
+    <span class="popup-tier ${m.t}">${tierLabel}</span>
+  `, { maxWidth: 280 });
+  marker.on('popupopen', () => history.replaceState(null, '', '#' + mSlug));
+  marker.on('popupclose', () => history.replaceState(null, '', location.pathname));
+  allMarkers.push({ marker, meeting: m });
+});
+
+function refreshMap() {
+  clusterGroup.clearLayers();
+  const toAdd = [];
+  allMarkers.forEach(({ marker, meeting }) => {
+    if (passesFilter(meeting)) toAdd.push(marker);
+  });
+  clusterGroup.addLayers(toAdd);
+}
+
+// ==== CALENDAR ====
+function getMonthFromDate(dateStr) {
+  const parts = dateStr.split(" ");
+  for (const p of parts) {
+    if (monthOrder[p]) return monthOrder[p];
+    for (const m in monthOrder) { if (p.includes(m)) return monthOrder[m]; }
+  }
+  return 1;
+}
+
+function buildCalendar() {
+  const byMonth = {};
+  meetings.forEach(m => {
+    const mo = getMonthFromDate(m.d);
+    if (!byMonth[mo]) byMonth[mo] = [];
+    byMonth[mo].push(m);
+  });
+  const inner = document.getElementById('calendarInner');
+  inner.innerHTML = '';
+  const sortedMonths = Object.keys(byMonth).map(Number).sort((a,b) => a-b);
+
+  const frag = document.createDocumentFragment();
+  sortedMonths.forEach(mo => {
+    const section = document.createElement('div');
+    section.className = 'month-section';
+    section.dataset.month = mo;
+    const header = document.createElement('div');
+    header.className = 'month-header';
+    header.innerHTML = `<span>${monthNames[mo]} 2026</span><span class="count-badge" data-month-count="${mo}">${byMonth[mo].length}</span>`;
+    section.appendChild(header);
+    byMonth[mo].forEach(m => {
+      const card = document.createElement('a');
+      card.className = 'meeting-card';
+      card.href = m.w; card.target = '_blank'; card.rel = 'noopener';
+      card.dataset.tier = m.t; card.dataset.country = m.c;
+      card.dataset.name = m.n; card.dataset.venue = m.v; card.dataset.date = m.d;
+      const tierLabel = m.t === 'diamond' ? 'Diamond' : m.t.charAt(0).toUpperCase() + m.t.slice(1);
+      const linkIcon = m.wt === 'official' ? '🔗' : '🔍';
+      const cSlug = slugify(m.n);
+      card.innerHTML = `
+        <div class="card-tier-bar ${m.t}"></div>
+        <div class="card-date">${m.d}</div>
+        <div class="card-body">
+          <div class="card-name">${m.n}</div>
+          <div class="card-venue">${m.v} · ${countryNames[m.c] || m.c}</div>
+          <div class="card-footer">
+            <span class="card-tier-badge ${m.t}">${tierLabel}</span>
+            <span class="card-link">${linkIcon}</span>
+            <button class="card-ics-btn" title="Add to calendar">📅</button>
+          </div>
+        </div>
+      `;
+      card.querySelector('.card-ics-btn').addEventListener('click', e => {
+        e.preventDefault(); e.stopPropagation(); downloadICS(cSlug);
+      });
+      section.appendChild(card);
+    });
+    frag.appendChild(section);
+  });
+  inner.appendChild(frag);
+}
+buildCalendar();
+
+// ==== VIEW TOGGLE ====
+document.querySelectorAll('.view-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const vc = document.getElementById('viewContainer');
+    if (btn.dataset.view === 'calendar') vc.classList.add('calendar-view');
+    else { vc.classList.remove('calendar-view'); setTimeout(() => map.invalidateSize(), 100); }
+  });
+});
+
+// ==== UPDATE ====
+function updateCalendar() {
+  const visibleByMonth = {};
+  let totalVisible = 0;
+  document.querySelectorAll('.meeting-card').forEach(card => {
+    const fakeM = { t: card.dataset.tier, c: card.dataset.country, n: card.dataset.name, v: card.dataset.venue, d: card.dataset.date };
+    const visible = passesFilter(fakeM);
+    card.classList.toggle('hidden', !visible);
+    if (visible) {
+      totalVisible++;
+      const mo = card.closest('.month-section').dataset.month;
+      visibleByMonth[mo] = (visibleByMonth[mo] || 0) + 1;
+    }
+  });
+  document.querySelectorAll('.month-section').forEach(s => {
+    const mo = s.dataset.month;
+    const c = visibleByMonth[mo] || 0;
+    s.classList.toggle('hidden', c === 0);
+    const badge = s.querySelector('[data-month-count]');
+    if (badge) badge.textContent = c;
+  });
+  document.getElementById('emptyState').classList.toggle('active', totalVisible === 0);
+}
+
+function updateAll() {
+  refreshMap();
+  updateCalendar();
+  updateMonthBar();
+  let v = 0;
+  meetings.forEach(m => { if (passesFilter(m)) v++; });
+  document.getElementById('count').textContent = `${v} of ${meetings.length} meetings`;
+}
+
+document.getElementById('c-diamond').textContent = tierCounts.diamond;
+document.getElementById('c-gold').textContent = tierCounts.gold;
+document.getElementById('c-silver').textContent = tierCounts.silver;
+document.getElementById('c-bronze').textContent = tierCounts.bronze;
+document.getElementById('c-challenger').textContent = tierCounts.challenger;
+
+// ==== MONTH BAR INIT (must be before updateAll) ====
+const monthBarEl = document.getElementById('monthBar');
+const usedMonths = [...new Set(meetings.map(m => getMonthFromDate(m.d)))].sort((a,b) => a-b);
+
+const allChip = document.createElement('button');
+allChip.className = 'month-chip active';
+allChip.textContent = 'All';
+allChip.dataset.month = '0';
+monthBarEl.appendChild(allChip);
+
+usedMonths.forEach(mo => {
+  const chip = document.createElement('button');
+  chip.className = 'month-chip';
+  chip.dataset.month = mo;
+  chip.innerHTML = `${monthNames[mo].slice(0,3)} <span class="chip-count"></span>`;
+  monthBarEl.appendChild(chip);
+});
+
+// ==== UPDATE MONTH BAR ====
+function passesFilterIgnoreMonth(m) {
+  if (!activeTiers.has(m.t)) return false;
+  if (activeContinent && countryToContinent[m.c] !== activeContinent) return false;
+  if (activeCountry && m.c !== activeCountry) return false;
+  if (searchQuery) {
+    const q = searchQuery.toLowerCase();
+    const hay = ((m.n||'') + ' ' + (m.v||'') + ' ' + (countryNames[m.c]||m.c||'')).toLowerCase();
+    if (!hay.includes(q)) return false;
+  }
+  if (upcomingOnly) {
+    const today = new Date(); today.setHours(0,0,0,0);
+    if (m.d && parseMeetingDate(m.d).end < today) return false;
+  }
+  return true;
+}
+function updateMonthBar() {
+  const countsByMonth = {};
+  meetings.forEach(m => {
+    if (!passesFilterIgnoreMonth(m)) return;
+    const mo = getMonthFromDate(m.d);
+    countsByMonth[mo] = (countsByMonth[mo] || 0) + 1;
+  });
+  monthBarEl.querySelectorAll('.month-chip').forEach(chip => {
+    const mo = +chip.dataset.month;
+    if (mo === 0) return;
+    const n = countsByMonth[mo] || 0;
+    chip.classList.toggle('empty', n === 0);
+    chip.querySelector('.chip-count').textContent = n || '';
+  });
+}
+
+monthBarEl.addEventListener('click', e => {
+  const chip = e.target.closest('.month-chip');
+  if (!chip) return;
+  const mo = +chip.dataset.month;
+  const allChipEl = monthBarEl.querySelector('.month-chip[data-month="0"]');
+
+  if (mo === 0) {
+    // "All" clicked — clear all month selections
+    activeMonths.clear();
+    monthBarEl.querySelectorAll('.month-chip').forEach(c => c.classList.remove('active'));
+    allChipEl.classList.add('active');
+  } else {
+    // Toggle this month
+    if (activeMonths.has(mo)) {
+      activeMonths.delete(mo);
+      chip.classList.remove('active');
+    } else {
+      activeMonths.add(mo);
+      chip.classList.add('active');
+    }
+    // If no months selected, revert to "All"
+    if (activeMonths.size === 0) {
+      allChipEl.classList.add('active');
+    } else {
+      allChipEl.classList.remove('active');
+    }
+  }
+
+  updateAll();
+  const vc = document.getElementById('viewContainer');
+  if (!vc.classList.contains('calendar-view') && activeMonths.size > 0) {
+    const filtered = allMarkers.filter(({meeting}) => passesFilter(meeting));
+    if (filtered.length > 0) {
+      const bounds = L.latLngBounds(filtered.map(({marker}) => marker.getLatLng()));
+      map.fitBounds(bounds, { padding: [60, 60], maxZoom: 6, animate: true });
+    }
+  }
+  if (vc.classList.contains('calendar-view') && activeMonths.size === 1) {
+    const section = document.querySelector(`.month-section[data-month="${[...activeMonths][0]}"]`);
+    if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+});
+
+document.querySelectorAll('.legend-item').forEach(item => {
+  item.addEventListener('click', () => {
+    const tier = item.dataset.tier;
+    if (activeTiers.has(tier)) { activeTiers.delete(tier); item.classList.add('disabled'); }
+    else { activeTiers.add(tier); item.classList.remove('disabled'); }
+    updateAll();
+  });
+});
+
+continentSel.addEventListener('change', e => {
+  activeContinent = e.target.value;
+  rebuildCountryDropdown();
+  activeCountry = countrySel.value;
+  updateAll();
+  if (activeContinent) {
+    const filtered = allMarkers.filter(({meeting}) => passesFilter(meeting));
+    if (filtered.length > 0) {
+      const bounds = L.latLngBounds(filtered.map(({marker}) => marker.getLatLng()));
+      map.fitBounds(bounds, { padding: [60, 60], maxZoom: 6, animate: true });
+    }
+  }
+});
+
+countrySel.addEventListener('change', e => {
+  activeCountry = e.target.value;
+  updateAll();
+  if (activeCountry) {
+    const filtered = allMarkers.filter(({meeting}) => passesFilter(meeting));
+    if (filtered.length > 0) {
+      const bounds = L.latLngBounds(filtered.map(({marker}) => marker.getLatLng()));
+      map.fitBounds(bounds, { padding: [60, 60], maxZoom: 8, animate: true });
+    }
+  }
+});
+
+updateAll();
+
+// ==== SEARCH ====
+document.getElementById('searchInput').addEventListener('input', e => {
+  searchQuery = e.target.value.trim();
+  updateAll();
+});
+
+// ==== UPCOMING TOGGLE ====
+document.getElementById('upcomingBtn').addEventListener('click', function() {
+  upcomingOnly = !upcomingOnly;
+  this.classList.toggle('active', upcomingOnly);
+  updateAll();
+});
+
+// ==== HASH / SHARE ====
+if (location.hash) {
+  const slug = location.hash.slice(1);
+  const found = allMarkers.find(({meeting}) => slugify(meeting.n) === slug);
+  if (found) {
+    setTimeout(() => {
+      map.setView(found.marker.getLatLng(), 8, {animate: false});
+      found.marker.openPopup();
+    }, 400);
+  }
+}
+</script>
+</body>
+</html>
