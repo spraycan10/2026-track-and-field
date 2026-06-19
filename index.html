@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800;900&family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="icon" href="assets/favicon-32x32.png" type="image/png" sizes="32x32" />
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    html{scroll-behavior:smooth}
+    body{font-family:"Hanken Grotesk",-apple-system,BlinkMacSystemFont,sans-serif;background:#f1f3f6;color:#161a20;-webkit-font-smoothing:antialiased}
+    ::selection{background:#e2231a;color:#fff}
+    a{text-decoration:none;color:inherit}
+    @keyframes waRise{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+  </style>
+</helmet>
+<div style="background:#f1f3f6;min-height:100vh;overflow-x:hidden">
+
+  <!-- NAV -->
+  <header style="position:sticky;top:0;z-index:50;background:rgba(255,255,255,.86);backdrop-filter:blur(12px);border-bottom:1px solid #e4e7ec">
+    <div style="max-width:1200px;margin:0 auto;padding:13px 26px;display:flex;align-items:center;justify-content:space-between;gap:16px">
+      <a href="#top" style="display:flex;align-items:center;gap:11px">
+        <img src="assets/logo.png" alt="2026 World Athletics" style="width:36px;height:36px" />
+        <span style="font-family:'Archivo',sans-serif;font-weight:800;font-size:1.02rem;letter-spacing:-.02em;text-transform:uppercase">World Athletics <span style="color:#e2231a">'26</span></span>
+      </a>
+      <nav style="display:flex;align-items:center;gap:8px">
+        <a href="#map" style="font-size:.82rem;font-weight:650;color:#5c6675;padding:8px 12px;border-radius:8px" style-hover="color:#161a20">The Map</a>
+        <a href="#tiers" style="font-size:.82rem;font-weight:650;color:#5c6675;padding:8px 12px;border-radius:8px" style-hover="color:#161a20">Tier System</a>
+        <a href="#featured" style="font-size:.82rem;font-weight:650;color:#5c6675;padding:8px 12px;border-radius:8px" style-hover="color:#161a20">Highlights</a>
+        <a href="explore.html" style="font-size:.82rem;font-weight:700;color:#fff;background:#16335c;padding:9px 16px;border-radius:9px;margin-left:6px" style-hover="background:#1f4a82">Open the map →</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- HERO -->
+  <section id="top" style="position:relative;overflow:hidden;background:#fff;border-bottom:1px solid #e4e7ec">
+    <div style="position:absolute;inset:0;background-image:repeating-linear-gradient(90deg,rgba(22,51,92,.05) 0 1px,transparent 1px 88px);pointer-events:none"></div>
+    <div style="position:absolute;top:-160px;right:-160px;width:520px;height:520px;border-radius:50%;background:radial-gradient(circle at 35% 35%,rgba(226,35,26,.08),transparent 60%);pointer-events:none"></div>
+    <div style="position:relative;max-width:1200px;margin:0 auto;padding:84px 26px 72px;text-align:center">
+      <div style="display:inline-flex;align-items:center;gap:9px;padding:7px 15px;border:1px solid #e4e7ec;border-radius:30px;background:#f7f8fa;font-size:.72rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#5c6675">
+        <span style="width:7px;height:7px;border-radius:50%;background:#e2231a"></span> Continental Tour &amp; Diamond League
+      </div>
+      <h1 style="font-family:'Archivo',sans-serif;font-weight:900;text-transform:uppercase;letter-spacing:-.025em;line-height:.96;font-size:clamp(2.7rem,7vw,5.4rem);margin:22px auto 0;max-width:14ch">Every meeting. <span style="color:#e2231a">One map.</span></h1>
+      <p style="max-width:54ch;margin:22px auto 0;font-size:clamp(1rem,1.6vw,1.18rem);line-height:1.6;color:#5c6675">The complete 2026 athletics season — <strong style="color:#161a20;font-weight:700">{{ total }} meetings</strong> across {{ countries }} countries, plotted on an interactive world map, sortable calendar, and season-long stats.</p>
+      <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:32px">
+        <a href="explore.html" style="display:inline-flex;align-items:center;gap:9px;background:#e2231a;color:#fff;font-weight:700;font-size:.95rem;padding:14px 26px;border-radius:11px;box-shadow:0 8px 22px rgba(226,35,26,.26)" style-hover="background:#c41910;transform:translateY(-2px)">Explore the map →</a>
+        <a href="explore.html" style="display:inline-flex;align-items:center;gap:9px;background:#fff;color:#161a20;font-weight:700;font-size:.95rem;padding:14px 26px;border-radius:11px;border:1px solid #d4d9e0" style-hover="border-color:#16335c">Browse the calendar</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- STAT BAND -->
+  <section style="background:#16335c;color:#fff">
+    <div style="max-width:1100px;margin:0 auto;padding:34px 26px;display:grid;grid-template-columns:repeat(4,1fr);gap:18px;text-align:center">
+      <div style="border-right:1px solid rgba(255,255,255,.14)">
+        <div style="font-family:'Archivo',sans-serif;font-weight:800;font-size:clamp(1.9rem,4vw,2.7rem);letter-spacing:-.02em">{{ total }}</div>
+        <div style="font-size:.74rem;letter-spacing:.08em;text-transform:uppercase;color:#9fb2cc;margin-top:4px;font-weight:600">Meetings</div>
+      </div>
+      <div style="border-right:1px solid rgba(255,255,255,.14)">
+        <div style="font-family:'Archivo',sans-serif;font-weight:800;font-size:clamp(1.9rem,4vw,2.7rem);letter-spacing:-.02em">{{ countries }}</div>
+        <div style="font-size:.74rem;letter-spacing:.08em;text-transform:uppercase;color:#9fb2cc;margin-top:4px;font-weight:600">Countries</div>
+      </div>
+      <div style="border-right:1px solid rgba(255,255,255,.14)">
+        <div style="font-family:'Archivo',sans-serif;font-weight:800;font-size:clamp(1.9rem,4vw,2.7rem);letter-spacing:-.02em">{{ continents }}</div>
+        <div style="font-size:.74rem;letter-spacing:.08em;text-transform:uppercase;color:#9fb2cc;margin-top:4px;font-weight:600">Continents</div>
+      </div>
+      <div>
+        <div style="font-family:'Archivo',sans-serif;font-weight:800;font-size:clamp(1.9rem,4vw,2.7rem);letter-spacing:-.02em">Jan–Sep</div>
+        <div style="font-size:.74rem;letter-spacing:.08em;text-transform:uppercase;color:#9fb2cc;margin-top:4px;font-weight:600">2026 Season</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- MAP PREVIEW -->
+  <section id="map" style="max-width:1200px;margin:0 auto;padding:76px 26px 40px">
+    <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap;margin-bottom:24px">
+      <div>
+        <div style="font-size:.72rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#e2231a">The interactive map</div>
+        <h2 style="font-family:'Archivo',sans-serif;font-weight:800;text-transform:uppercase;letter-spacing:-.02em;font-size:clamp(1.6rem,3.2vw,2.4rem);margin-top:8px;line-height:1.05">See the whole season at a glance</h2>
+      </div>
+      <p style="max-width:40ch;font-size:.92rem;line-height:1.6;color:#5c6675">Every dot is a meeting, colour-coded by tier and clustered by region. Filter by month, country, or tier — then jump straight to tickets, travel, and calendar export.</p>
+    </div>
+    <a href="explore.html" style="display:block;position:relative;border-radius:18px;overflow:hidden;border:1px solid #d4d9e0;box-shadow:0 20px 60px rgba(22,26,32,.16);background:#eef0f4" style-hover="box-shadow:0 26px 70px rgba(22,26,32,.22)">
+      <iframe src="explore.html" title="Interactive map preview" style="width:100%;height:560px;border:0;display:block;pointer-events:none" scrolling="no" loading="lazy"></iframe>
+      <div style="position:absolute;inset:0;background:linear-gradient(180deg,transparent 60%,rgba(22,26,32,.04))"></div>
+      <div style="position:absolute;bottom:18px;left:50%;transform:translateX(-50%);display:inline-flex;align-items:center;gap:9px;background:#161a20;color:#fff;font-weight:700;font-size:.9rem;padding:12px 22px;border-radius:11px;box-shadow:0 10px 30px rgba(0,0,0,.3)">Open the full interactive map →</div>
+    </a>
+  </section>
+
+  <!-- TIER SYSTEM -->
+  <section id="tiers" style="max-width:1200px;margin:0 auto;padding:56px 26px">
+    <div style="text-align:center;max-width:60ch;margin:0 auto 36px">
+      <div style="font-size:.72rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#e2231a">How meetings rank</div>
+      <h2 style="font-family:'Archivo',sans-serif;font-weight:800;text-transform:uppercase;letter-spacing:-.02em;font-size:clamp(1.6rem,3.2vw,2.4rem);margin-top:8px">The five-tier system</h2>
+      <p style="font-size:.94rem;line-height:1.65;color:#5c6675;margin-top:12px">From the invitation-only Diamond League down to grassroots Challenger meets, every event carries a tier — a quick read on prize money, athlete quality, and ranking points on offer.</p>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px">
+      <sc-for list="{{ tiers }}" as="tier" hint-placeholder-count="5">
+        <div style="background:#fff;border:1px solid #e4e7ec;border-top:4px solid {{ tier.color }};border-radius:14px;padding:20px;box-shadow:0 1px 2px rgba(22,26,32,.04)">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <span style="font-family:'Archivo',sans-serif;font-weight:800;font-size:1.02rem;text-transform:uppercase;letter-spacing:.01em">{{ tier.name }}</span>
+            <span style="width:12px;height:12px;border-radius:50%;background:{{ tier.color }}"></span>
+          </div>
+          <div style="font-size:.74rem;font-weight:700;color:#929bab;margin-top:6px;font-variant-numeric:tabular-nums">{{ tier.meta }}</div>
+          <p style="font-size:.84rem;line-height:1.55;color:#5c6675;margin-top:12px">{{ tier.desc }}</p>
+        </div>
+      </sc-for>
+    </div>
+  </section>
+
+  <!-- FEATURED -->
+  <section id="featured" style="background:#fff;border-top:1px solid #e4e7ec;border-bottom:1px solid #e4e7ec">
+    <div style="max-width:1200px;margin:0 auto;padding:64px 26px">
+      <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap;margin-bottom:30px">
+        <div>
+          <div style="font-size:.72rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#e2231a">Marquee meetings</div>
+          <h2 style="font-family:'Archivo',sans-serif;font-weight:800;text-transform:uppercase;letter-spacing:-.02em;font-size:clamp(1.6rem,3.2vw,2.4rem);margin-top:8px">Gold-tier highlights</h2>
+        </div>
+        <a href="explore.html" style="font-size:.88rem;font-weight:700;color:#16335c" style-hover="color:#e2231a">See all {{ total }} meetings →</a>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px">
+        <sc-for list="{{ featured }}" as="m" hint-placeholder-count="6">
+          <a href="{{ m.w }}" target="_blank" rel="noopener" style="display:block;background:#fbfcfd;border:1px solid #e4e7ec;border-radius:14px;padding:20px;transition:all .15s" style-hover="border-color:#d4d9e0;box-shadow:0 10px 30px rgba(22,26,32,.08);transform:translateY(-2px)">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+              <span style="font-family:'Archivo',sans-serif;font-weight:800;font-size:.62rem;text-transform:uppercase;letter-spacing:.06em;color:#8a6512;background:rgba(192,144,44,.16);padding:3px 9px;border-radius:5px">Gold</span>
+              <span style="font-size:.74rem;font-weight:700;color:#929bab;font-variant-numeric:tabular-nums">{{ m.d }}</span>
+            </div>
+            <h3 style="font-weight:700;font-size:1.04rem;letter-spacing:-.01em;margin-top:14px;line-height:1.25">{{ m.n }}</h3>
+            <div style="font-size:.84rem;color:#5c6675;margin-top:6px;line-height:1.4">{{ m.v }}</div>
+            <div style="display:flex;align-items:center;gap:7px;margin-top:14px;padding-top:14px;border-top:1px solid #eef0f4">
+              <span style="width:6px;height:6px;border-radius:50%;background:#e2231a"></span>
+              <span style="font-size:.8rem;font-weight:700;color:#16335c">{{ m.country }}</span>
+            </div>
+          </a>
+        </sc-for>
+      </div>
+    </div>
+  </section>
+
+  <!-- APP TEASER -->
+  <section style="max-width:1200px;margin:0 auto;padding:72px 26px">
+    <div style="background:linear-gradient(135deg,#16335c,#0f2746);border-radius:22px;padding:clamp(32px,5vw,56px);color:#fff;display:grid;grid-template-columns:1.2fr 1fr;gap:40px;align-items:center;overflow:hidden;position:relative">
+      <div style="position:absolute;inset:0;background-image:repeating-linear-gradient(90deg,rgba(255,255,255,.04) 0 1px,transparent 1px 64px);pointer-events:none"></div>
+      <div style="position:relative">
+        <div style="font-size:.72rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#7fa6d9">Now in your pocket</div>
+        <h2 style="font-family:'Archivo',sans-serif;font-weight:800;text-transform:uppercase;letter-spacing:-.02em;font-size:clamp(1.7rem,3.4vw,2.5rem);margin-top:10px;line-height:1.04">The season, redesigned for mobile</h2>
+        <p style="font-size:.96rem;line-height:1.65;color:#c5d4ea;margin-top:14px;max-width:46ch">Follow meetings on the go, save the ones you want to attend, and get the map, calendar and stats in a clean native app experience.</p>
+        <a href="app.html" style="display:inline-flex;align-items:center;gap:9px;background:#e2231a;color:#fff;font-weight:700;font-size:.95rem;padding:13px 24px;border-radius:11px;margin-top:26px" style-hover="background:#c41910">Preview the app concept →</a>
+      </div>
+      <div style="position:relative;text-align:center">
+        <img src="assets/logo.png" alt="" style="width:120px;height:120px;opacity:.95;filter:drop-shadow(0 16px 40px rgba(0,0,0,.4))" />
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer style="background:#fff;border-top:1px solid #e4e7ec">
+    <div style="max-width:1200px;margin:0 auto;padding:34px 26px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:11px">
+        <img src="assets/logo.png" alt="" style="width:30px;height:30px" />
+        <span style="font-family:'Archivo',sans-serif;font-weight:800;font-size:.92rem;text-transform:uppercase;letter-spacing:-.01em">World Athletics '26</span>
+      </div>
+      <p style="font-size:.78rem;color:#929bab">{{ total }} meetings · 2026 Continental Tour &amp; Diamond League · Unofficial fan project</p>
+      <a href="explore.html" style="font-size:.84rem;font-weight:700;color:#16335c" style-hover="color:#e2231a">Open the map →</a>
+    </div>
+  </footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { wa: (typeof window !== 'undefined' && window.WA) ? window.WA : null };
+
+  componentDidMount() {
+    if (!this.state.wa) {
+      this._t = setInterval(() => {
+        if (window.WA) { clearInterval(this._t); this.setState({ wa: window.WA }); }
+      }, 60);
+      // load shared data if not already present
+      if (!document.querySelector('script[data-wa]')) {
+        const s = document.createElement('script');
+        s.src = 'data/season.js'; s.setAttribute('data-wa', '1');
+        document.head.appendChild(s);
+      }
+    }
+  }
+  componentWillUnmount() { if (this._t) clearInterval(this._t); }
+
+  renderVals() {
+    const wa = this.state.wa;
+    const tierMeta = {
+      diamond: { name: 'Diamond', color: '#0e9cc4', desc: 'The pinnacle. Invitation-only meetings with the sport\u2019s biggest stars and the richest prize money.' },
+      gold:    { name: 'Gold',    color: '#c0902c', desc: 'The Continental Tour\u2019s top tier \u2014 world-class fields and valuable Olympic ranking points.' },
+      silver:  { name: 'Silver',  color: '#828c9b', desc: 'Strong international meetings mixing established names with the next generation.' },
+      bronze:  { name: 'Bronze',  color: '#a86a3c', desc: 'Regional meets offering athletes competitive racing and world-ranking points.' },
+      challenger:{ name: 'Challenger', color: '#9aa6b6', desc: 'The entry tier of the global circuit \u2014 grassroots and specialist field events.' },
+    };
+    const order = ['diamond', 'gold', 'silver', 'bronze', 'challenger'];
+
+    if (!wa) {
+      const tiers = order.map(k => ({ ...tierMeta[k], meta: '' }));
+      return { total: '294', countries: '40+', continents: '6', tiers, featured: [] };
+    }
+
+    const m = wa.meetings;
+    const counts = {};
+    m.forEach(x => { counts[x.t] = (counts[x.t] || 0) + 1; });
+    const countries = new Set(m.map(x => x.c)).size;
+    const continents = new Set(m.map(x => wa.countryToContinent[x.c]).filter(Boolean)).size;
+
+    const tiers = order.map(k => ({
+      ...tierMeta[k],
+      meta: counts[k] ? counts[k] + ' meetings' : 'Premier series',
+    }));
+
+    const featured = m
+      .filter(x => x.wt === 'official' && x.t === 'gold')
+      .slice(0, 6)
+      .map(x => ({
+        n: x.n, d: x.d + ' 2026', v: x.v, w: x.w,
+        country: wa.countryNames[x.c] || x.c,
+      }));
+
+    return { total: m.length, countries, continents, tiers, featured };
+  }
+}
+</script>
+</body>
+</html>
